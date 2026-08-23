@@ -18,9 +18,12 @@ com.missioncontrol
 ├── MissionControlApplication      <- root package: visible to everything
 ├── platform                       <- OPEN module (infrastructure)
 ├── shared                         <- OPEN module (shared kernel, currently empty)
-├── mission                        <- a future domain module
-├── crew                           <- a future domain module
-└── assignment                     <- a future domain module
+├── identity                       <- planned: Organisation, User
+├── skill                          <- planned: skill catalogue
+├── crew                           <- planned: CrewMember, CrewSkill
+├── mission                        <- planned: Mission and its requirements
+├── assignment                     <- planned: Assignment
+└── matching                       <- planned: crew matching engine (owns no data)
 ```
 
 Within a domain module:
@@ -113,6 +116,94 @@ Conventions:
   forever, and it is the single hardest thing to unpick if a module is ever extracted.
 - `spring.jpa.hibernate.ddl-auto` is `validate`. Liquibase owns the schema; Hibernate only checks
   that the mapping matches. Never set this to `update`.
+
+## Data model
+
+Entity fields and invariants live in [`data-model.md`](data-model.md). This section covers the
+decisions behind them and how they map onto modules.
+
+### Decisions
+
+| Area | Decision | Why |
+| --- | --- | --- |
+| Tenancy | `organisationId` on every tenant-owned entity, filtered in **application code** | One database, one schema. Enforcement stays in code rather than Postgres RLS, so the rule is visible and testable where it is applied |
+| Crew vs User | Separate `CrewMember`, 1:1 with `User`, in different modules | Keeps authentication out of the crew domain; `identity` owns logging in, `crew` owns skills and history |
+| Skills | Org-scoped catalogue, 1–5 proficiency, requirements mark each skill mandatory or preferred | Matching is the core feature; free-text tags would break it silently on typos and synonyms |
+| Crew requirements | Quantity-based (`requiredCount`), not one row per seat | Assignments count against the requirement; expanding seats adds rows without adding meaning |
+| "One assignment at a time" | Temporal: no overlapping **accepted** missions. Offers never block | Reads "available unless assigned" as a calendar, which allows booking future missions ahead |
+| Mission abort | Folds into `CLOSED` with a `closeReason` | Keeps the status set exactly as the product spec lists it |
+| Timestamps | UTC instants throughout | The frontend converts for display |
+| Enums | Integers with pinned, append-only codes | The integer is what is stored; reordering a constant would silently re-point existing rows |
+| Match results | Transient, not persisted | Nothing yet needs to audit why a crew member was suggested |
+
+### Module ownership
+
+| Module | Owns |
+| --- | --- |
+| `identity` | `Organisation`, `User` |
+| `skill` | `Skill` |
+| `crew` | `CrewMember`, `CrewSkill` |
+| `mission` | `Mission`, `MissionApproval`, `CrewRequirement`, `RequiredSkill` |
+| `assignment` | `Assignment` |
+| `matching` | nothing — reads the others and returns ranked suggestions |
+
+`Skill` gets its own module so `mission` does not have to depend on `crew` merely to name a skill.
+
+**The cycle to avoid.** `assignment` depends on `mission`, because offering and accepting need the
+mission's dates and status. So `mission` must **not** depend on `assignment`. Two consequences:
+
+- "Is this requirement filled?" is a read model owned by `assignment`, not by `mission`.
+- `mission` learns about acceptances through an `AssignmentAccepted` event, not a direct call.
+
+### Entity relationships
+
+```mermaid
+erDiagram
+    Organisation    ||--o{ User            : "employs"
+    Organisation    ||--o{ Skill           : "defines"
+    User            ||--o| CrewMember      : "has profile"
+    CrewMember      ||--o{ CrewSkill       : "rated in"
+    Skill           ||--o{ CrewSkill       : "scored by"
+    User            ||--o{ Mission         : "leads"
+    Mission         ||--o{ MissionApproval : "reviewed in"
+    Mission         ||--o{ CrewRequirement : "staffed by"
+    CrewRequirement ||--o{ RequiredSkill   : "calls for"
+    Skill           ||--o{ RequiredSkill   : "requested by"
+    Mission         ||--o{ Assignment      : "has"
+    CrewRequirement ||--o{ Assignment      : "filled by"
+    CrewMember      ||--o{ Assignment      : "receives"
+```
+
+Every relationship crossing a module boundary is **an ID reference with no foreign key**, per the
+schema rules above. Within a module — `Mission` to `CrewRequirement`, `CrewRequirement` to
+`RequiredSkill` — real foreign keys are fine.
+
+### Mission lifecycle
+
+```
+  PLAN ──submit──▶ PENDING_APPROVAL ──approve──▶ APPROVED ──start──▶ ACTIVE
+    ▲                     │
+    │                     └──reject──▶ REJECTED
+    │                                      │
+    └────────── return to plan ────────────┘
+
+  PLAN ◀── edit (M5) ── APPROVED  or  ACTIVE
+
+  any non-terminal state ──close / abort──▶ CLOSED   (terminal)
+       closeReason = COMPLETED | ABORTED | REJECTED
+```
+
+Three things this encodes:
+
+- **Abort is not a status.** Any non-terminal state closes directly, with
+  `closeReason = ABORTED`. That keeps the status set exactly as the product spec lists it.
+- **A rejected mission has two ways out** — back to `PLAN` for another attempt, or straight to
+  `CLOSED`. Both paths are in the spec.
+- **Editing an approved or active mission drops it back to `PLAN`**, because the spec requires an
+  edited mission to be resubmitted. This is invariant M5, and its effect on crew who already
+  accepted is still open.
+
+The exhaustive transition table is M3 in [`data-model.md`](data-model.md#invariants).
 
 ## Enforcement
 
@@ -207,8 +298,13 @@ point at every call site that needs updating.
 Things deliberately not settled yet, recorded so they are not silently forgotten:
 
 - **Authentication.** Spring Security is wired but everything is `permitAll()`. `JwtProperties`
-  sketches the intended configuration shape. Whether crew members are also application users is
-  an open modelling question — the answer decides whether `identity` is one module or two.
-- **Multi-tenancy.** Not considered at all. Retrofitting it is expensive; if there is any chance
-  of it, decide before the schema grows.
+  sketches the intended configuration shape. Logout will revoke tokens via a `tokensValidFrom`
+  instant on `User` — see the open questions in [`data-model.md`](data-model.md#open-questions).
 - **Frontend routing.** No router yet, because there is one page.
+
+Settled since:
+
+- **Multi-tenancy** — every tenant-owned entity carries `organisationId`, filtered in application
+  code. See [Data model](#data-model).
+- **Crew members as users** — `CrewMember` is a separate entity in `crew`, 1:1 with a `User` in
+  `identity`. Two modules, not one.

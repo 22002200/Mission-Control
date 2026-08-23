@@ -37,7 +37,8 @@ Each user can only have one role.
 
 ### Authentication
 
-- Users can login via username/password.
+- Users can login via email and password.
+- Successful authentication produces a JWT, identifying user, organisation, and role.
 - Users must only see data belonging to their organisation.
 - Users can logout.
 
@@ -78,6 +79,7 @@ A mission can have the following lifecycles:
 - PLAN → PENDING_APPROVAL → REJECTED → PLAN
 
 Rejected missions can either be closed or returned to PLAN phase.
+Missions can be closed from any phase.
 
 ## 5. Product Constraints
 

@@ -1,0 +1,77 @@
+spring:
+  application:
+    name: mission-control
+
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/missioncontrol}
+    username: ${DB_USERNAME:missioncontrol}
+    password: ${DB_PASSWORD:missioncontrol}
+
+  jpa:
+    # Liquibase owns the schema. Hibernate only ever checks that the mapping matches;
+    # it must never be allowed to create or alter tables.
+    hibernate:
+      ddl-auto: validate
+    # Off by default: lazy loading in the view layer hides N+1 queries and blurs the
+    # transaction boundary each module is responsible for.
+    open-in-view: false
+    properties:
+      hibernate:
+        jdbc:
+          time_zone: UTC
+
+  liquibase:
+    change-log: classpath:db/changelog/db.changelog-master.yaml
+
+  threads:
+    virtual:
+      enabled: true
+
+  jackson:
+    default-property-inclusion: non_null
+
+server:
+  port: ${BACKEND_PORT:8080}
+  error:
+    include-message: never
+    include-stacktrace: never
+  shutdown: graceful
+
+management:
+  endpoints:
+    web:
+      exposure:
+        # Deliberately narrow. Widen consciously, and only behind authentication.
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+    tags-sorter: alpha
+
+missioncontrol:
+  # spring-boot-starter-parent filters application*.yml with @...@ delimiters, so
+  # Maven substitutes the real project version here at build time. If you ever see
+  # the literal placeholder in a response, the resources were not processed by Maven.
+  version: '@project.version@'
+
+  cors:
+    allowed-origins: http://localhost:5173
+
+  security:
+    jwt:
+      # Placeholders. Nothing reads these yet - see SecurityConfig TODO(auth).
+      issuer: mission-control
+      audience: mission-control-web
+      access-token-ttl: PT15M
+
+logging:
+  level:
+    com.missioncontrol: INFO

@@ -1,0 +1,12 @@
+# Active when the backend runs inside Compose, where Postgres is reachable by
+# service name on the project network.
+spring:
+  datasource:
+    url: jdbc:postgresql://db:5432/${POSTGRES_DB:missioncontrol}
+missioncontrol:
+  cors:
+    allowed-origins: http://localhost:5173,http://frontend:5173
+
+logging:
+  level:
+    com.missioncontrol: DEBUG

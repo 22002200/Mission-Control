@@ -1,0 +1,36 @@
+# Production-shaped overlay: built artefacts instead of dev servers.
+#
+#   docker compose -f compose.yaml -f compose.prod.yaml up --build
+#
+# The backend becomes a slim JRE image running the packaged jar, and the frontend
+# becomes nginx serving static assets and proxying /api. Source watching is off.
+#
+# This is for validating the production build locally. It is not a deployment
+# manifest: secrets still come from .env, and the database is still a container.
+
+services:
+  backend:
+    build:
+      target: runtime
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+      DB_URL: jdbc:postgresql://db:5432/${POSTGRES_DB:-missioncontrol}
+    volumes: []
+    develop: !reset null
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:8080/actuator/health | grep -q UP']
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 40s
+
+  frontend:
+    build:
+      target: runtime
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment: {}
+    ports:
+      - '${FRONTEND_PORT:-5173}:80'
+    develop: !reset null

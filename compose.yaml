@@ -1,0 +1,96 @@
+# Local development stack: Postgres + backend + frontend.
+#
+#   docker compose up --build --watch
+#
+# `--watch` syncs source changes into the running containers (see the `develop`
+# blocks below) instead of bind-mounting the host filesystem. On Windows that
+# matters: bind mounts do not propagate inotify events into Linux containers, so
+# Vite's HMR silently stops working. Syncing writes real files inside the
+# container, so file watching behaves normally with no polling workaround.
+
+# Pinned explicitly because Compose cannot derive a valid project name from the
+# "Mission Control" directory (spaces and capitals are not permitted).
+name: mission-control
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-missioncontrol}
+      POSTGRES_USER: ${POSTGRES_USER:-missioncontrol}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-missioncontrol}
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      # Postgres 18+ images store data in a major-version subdirectory and expect the
+      # mount one level up, at /var/lib/postgresql. Mounting /var/lib/postgresql/data
+      # (the pre-18 convention) makes the container refuse to start.
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          'pg_isready -U ${POSTGRES_USER:-missioncontrol} -d ${POSTGRES_DB:-missioncontrol}',
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  backend:
+    build:
+      context: ./backend
+      target: dev
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      SPRING_PROFILES_ACTIVE: ${SPRING_PROFILES_ACTIVE:-docker}
+      POSTGRES_DB: ${POSTGRES_DB:-missioncontrol}
+      DB_USERNAME: ${POSTGRES_USER:-missioncontrol}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-missioncontrol}
+      # Compose watch already restarts this container on a source change, so DevTools'
+      # restart classloader is pure overhead here. It has to be a system property set
+      # before Spring starts: the equivalent application.yml property stops the
+      # file-watching but still leaves the second classloader in place.
+      JAVA_TOOL_OPTIONS: -Dspring.devtools.restart.enabled=false
+    ports:
+      - '${BACKEND_PORT:-8080}:8080'
+    volumes:
+      # Survives container rebuilds so Maven does not re-download the world.
+      - maven-cache:/root/.m2
+    develop:
+      watch:
+        # Java needs recompiling, so a source change restarts the container and
+        # `mvnw spring-boot:run` rebuilds. Slower than frontend HMR by nature.
+        - action: sync+restart
+          path: ./backend/src
+          target: /app/src
+        - action: rebuild
+          path: ./backend/pom.xml
+
+  frontend:
+    build:
+      context: ./frontend
+      target: dev
+    restart: unless-stopped
+    depends_on:
+      - backend
+    environment:
+      VITE_API_PROXY_TARGET: http://backend:8080
+    ports:
+      - '${FRONTEND_PORT:-5173}:5173'
+    develop:
+      watch:
+        - action: sync
+          path: ./frontend/src
+          target: /app/src
+        # A dependency change needs a fresh `npm ci`, which only a rebuild gives.
+        - action: rebuild
+          path: ./frontend/package.json
+
+volumes:
+  db-data:
+  maven-cache:

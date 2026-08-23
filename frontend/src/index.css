@@ -1,0 +1,82 @@
+:root {
+  --mc-bg: #0b1020;
+  --mc-surface: #151b30;
+  --mc-border: #26304d;
+  --mc-text: #e6e9f2;
+  --mc-muted: #9aa3bd;
+  --mc-accent: #6ea8fe;
+
+  color-scheme: dark;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--mc-bg);
+  color: var(--mc-text);
+}
+
+.mc-shell {
+  max-width: 46rem;
+  margin: 0 auto;
+  padding: 3rem 1.5rem;
+}
+
+.mc-title {
+  margin: 0 0 0.25rem;
+  font-size: 1.75rem;
+  letter-spacing: -0.01em;
+}
+
+.mc-subtitle {
+  margin: 0 0 2rem;
+  color: var(--mc-muted);
+}
+
+.mc-card {
+  background: var(--mc-surface);
+  border: 1px solid var(--mc-border);
+  border-radius: 0.75rem;
+  padding: 1.25rem 1.5rem;
+}
+
+.mc-card h2 {
+  margin: 0 0 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--mc-muted);
+}
+
+.mc-facts {
+  display: grid;
+  grid-template-columns: 10rem 1fr;
+  gap: 0.6rem 1rem;
+  margin: 0;
+}
+
+.mc-facts dt {
+  color: var(--mc-muted);
+}
+
+.mc-facts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.mc-error {
+  color: #ff8f8f;
+}
+
+code {
+  font-family: 'Cascadia Code', Consolas, monospace;
+  font-size: 0.9em;
+  color: var(--mc-accent);
+}

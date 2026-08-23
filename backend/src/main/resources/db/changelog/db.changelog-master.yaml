@@ -1,0 +1,15 @@
+# Master changelog.
+#
+# Each module owns its schema and keeps its changelogs under
+# db/changelog/modules/<module>/. `includeAll` picks them up in lexicographic
+# directory order, so no module has to edit this file to add a migration.
+#
+# `errorIfMissingOrEmpty: false` is what lets this stay valid while there are no
+# domain modules yet. Running Liquibase against an empty set still creates the
+# DATABASECHANGELOG and DATABASECHANGELOGLOCK tables, which is how we know the
+# migration path works before any real schema exists.
+databaseChangeLog:
+  - includeAll:
+      path: db/changelog/modules/
+      relativeToChangelogFile: false
+      errorIfMissingOrEmpty: false

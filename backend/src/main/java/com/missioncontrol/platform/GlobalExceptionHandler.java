@@ -11,9 +11,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
@@ -85,6 +87,22 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    /**
+     * A known path called with a method it does not support - a {@code DELETE} on a skill, for
+     * instance, which feature 03 deliberately does not offer.
+     *
+     * <p>Same trap as the handler above: without it the catch-all turns a 405 into a 500, and a
+     * client trying an endpoint that was never meant to exist is told the server broke.
+     */
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ProblemDetail handleMethodNotSupported(HttpRequestMethodNotSupportedException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.METHOD_NOT_ALLOWED, "Method not supported for this resource.");
+        problem.setTitle("Method not allowed");
+        problem.setType(ProblemTypes.METHOD_NOT_ALLOWED);
+        return problem;
+    }
+
     /** Bean-validation failures on {@code @Valid @RequestBody} arguments. */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ProblemDetail handleValidation(MethodArgumentNotValidException ex) {
@@ -105,6 +123,23 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleConstraintViolation(ConstraintViolationException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.BAD_REQUEST, ex.getMessage());
+        problem.setTitle("Validation failed");
+        problem.setType(ProblemTypes.VALIDATION_FAILED);
+        return problem;
+    }
+
+    /**
+     * A path variable or request parameter that could not be converted to its declared type - a
+     * malformed UUID in {@code /api/skills/&#123;id&#125;}, say, or a non-numeric page index.
+     *
+     * <p>Without this the catch-all below reports a client typo as a 500. The detail names the
+     * offending parameter but never echoes the submitted value, which is caller-controlled and has
+     * no business being reflected into a response body.
+     */
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ProblemDetail handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST, "Parameter '" + ex.getName() + "' is not a valid value.");
         problem.setTitle("Validation failed");
         problem.setType(ProblemTypes.VALIDATION_FAILED);
         return problem;

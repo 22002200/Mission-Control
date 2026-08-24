@@ -4,7 +4,9 @@
 
 - Use constructor injection.
 - Do not expose persistence entities directly through REST APIs.
-- Use lombok for entities
+- Use lombok for entities.
+- Use lombok for class constructors.
+- Use Slf4j for logging.
 - Use java records for DTOs
 - Use JUnit 5 for testing.
 - Use UTC time in database.

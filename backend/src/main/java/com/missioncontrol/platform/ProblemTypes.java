@@ -15,6 +15,8 @@ public final class ProblemTypes {
     public static final URI UNAUTHENTICATED = URI.create("urn:mission-control:unauthenticated");
     public static final URI FORBIDDEN = URI.create("urn:mission-control:forbidden");
     public static final URI NOT_FOUND = URI.create("urn:mission-control:not-found");
+    public static final URI METHOD_NOT_ALLOWED =
+            URI.create("urn:mission-control:method-not-allowed");
     public static final URI INTERNAL_ERROR = URI.create("urn:mission-control:internal-error");
 
     private ProblemTypes() {

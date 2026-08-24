@@ -54,6 +54,37 @@ export type SystemInfo = {
     serverTime: string;
 };
 
+/**
+ * One page of an organisation's skill catalogue.
+ */
+export type SkillPage = {
+    content: Array<SkillResponse>;
+    /**
+     * Zero-based page index.
+     */
+    page: number;
+    /**
+     * Requested page size.
+     */
+    size: number;
+    /**
+     * Total matching skills across every page.
+     */
+    totalElements: number;
+    totalPages: number;
+};
+
+/**
+ * An entry in an organisation's skill catalogue.
+ */
+export type SkillResponse = {
+    id: string;
+    name: string;
+    category?: string;
+    description?: string;
+    active: boolean;
+};
+
 export type LogoutData = {
     body?: never;
     path?: never;
@@ -127,6 +158,83 @@ export type GetSystemInfoResponses = {
 };
 
 export type GetSystemInfoResponse = GetSystemInfoResponses[keyof GetSystemInfoResponses];
+
+export type ListSkillsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Return only active, or only retired, skills.
+         */
+        active?: boolean;
+        /**
+         * Case-insensitive substring of the name.
+         */
+        search?: string;
+        /**
+         * Zero-based page index.
+         */
+        page?: number;
+        /**
+         * Entries per page.
+         */
+        size?: number;
+    };
+    url: '/api/skills';
+};
+
+export type ListSkillsErrors = {
+    /**
+     * A parameter is out of range
+     */
+    400: ProblemDetail;
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+};
+
+export type ListSkillsError = ListSkillsErrors[keyof ListSkillsErrors];
+
+export type ListSkillsResponses = {
+    /**
+     * One page of the catalogue
+     */
+    200: SkillPage;
+};
+
+export type ListSkillsResponse = ListSkillsResponses[keyof ListSkillsResponses];
+
+export type GetSkillData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/skills/{id}';
+};
+
+export type GetSkillErrors = {
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+    /**
+     * No such skill in the caller's organisation
+     */
+    404: ProblemDetail;
+};
+
+export type GetSkillError = GetSkillErrors[keyof GetSkillErrors];
+
+export type GetSkillResponses = {
+    /**
+     * The skill
+     */
+    200: SkillResponse;
+};
+
+export type GetSkillResponse = GetSkillResponses[keyof GetSkillResponses];
 
 export type CurrentUserData = {
     body?: never;

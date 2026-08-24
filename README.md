@@ -117,6 +117,31 @@ That is the intended behaviour, not a regression.
 In the UI, signing in reveals an account menu pinned to the top-right corner: the user's name with
 a dropdown arrow, opening onto their role, organisation and a **Sign out** item.
 
+## Skill catalogue
+
+Read-only so far. Every role may read; creating, editing and retiring skills are director-only and
+not yet built. See [`docs/features/03-skill-catalogue.md`](docs/features/03-skill-catalogue.md).
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| GET | `/api/skills` | One page of the caller's organisation's catalogue, sorted by name |
+| GET | `/api/skills/{id}` | One skill |
+
+`GET /api/skills` takes four optional query parameters: `active` (boolean), `search` (a
+case-insensitive substring of the name), `page` (default 0) and `size` (default 50, maximum 200).
+
+```bash
+curl -s "localhost:8080/api/skills?search=systems&size=5" -H "Authorization: Bearer $TOKEN"
+```
+
+Two things worth knowing:
+
+- **The organisation comes from the token.** There is no parameter for it, and supplying one is
+  inert. Asking for a skill belonging to another organisation returns **404, not 403** - a 403
+  would confirm the row exists.
+- **There is no delete.** Skills are retired with an `active` flag so that crew ratings and mission
+  requirements already referencing them stay readable.
+
 ### A note on styling
 
 Two systems coexist, on purpose. The shell and the login form use the hand-rolled `mc-` classes in

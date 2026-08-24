@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CurrentUserData, CurrentUserErrors, CurrentUserResponses, GetSystemInfoData, GetSystemInfoResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses } from './types.gen';
+import type { CurrentUserData, CurrentUserErrors, CurrentUserResponses, GetSkillData, GetSkillErrors, GetSkillResponses, GetSystemInfoData, GetSystemInfoResponses, ListSkillsData, ListSkillsErrors, ListSkillsResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -51,6 +51,28 @@ export const login = <ThrowOnError extends boolean = false>(options: Options<Log
 export const getSystemInfo = <ThrowOnError extends boolean = false>(options?: Options<GetSystemInfoData, ThrowOnError>): RequestResult<GetSystemInfoResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetSystemInfoResponses, unknown, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/system/info',
+    ...options
+});
+
+/**
+ * List skills
+ *
+ * The caller's organisation's catalogue, sorted by name, case-insensitively. Both filters are optional and omitting one leaves it off.
+ */
+export const listSkills = <ThrowOnError extends boolean = false>(options?: Options<ListSkillsData, ThrowOnError>): RequestResult<ListSkillsResponses, ListSkillsErrors, ThrowOnError> => (options?.client ?? client).get<ListSkillsResponses, ListSkillsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/skills',
+    ...options
+});
+
+/**
+ * Get one skill
+ *
+ * A skill belonging to another organisation is reported as absent, not as forbidden.
+ */
+export const getSkill = <ThrowOnError extends boolean = false>(options: Options<GetSkillData, ThrowOnError>): RequestResult<GetSkillResponses, GetSkillErrors, ThrowOnError> => (options.client ?? client).get<GetSkillResponses, GetSkillErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/skills/{id}',
     ...options
 });
 

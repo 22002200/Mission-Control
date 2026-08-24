@@ -19,7 +19,7 @@ com.missioncontrol
 ├── platform                       <- OPEN module (infrastructure)
 ├── shared                         <- OPEN module (shared kernel: UserRole)
 ├── identity                       <- Organisation, User (first closed module)
-├── skill                          <- planned: skill catalogue
+├── skill                          <- Skill (read endpoints only so far)
 ├── crew                           <- planned: CrewMember, CrewSkill
 ├── mission                        <- planned: Mission and its requirements
 ├── assignment                     <- planned: Assignment

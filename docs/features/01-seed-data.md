@@ -63,6 +63,11 @@ None. This feature has no HTTP surface.
 - [ ] No row in one organisation references a row in the other.
 - [ ] Seed credentials are documented in the project README.
 
+Feature [02](02-authentication.md) adds one further seeded user - a **disabled** mission lead - so
+that "a disabled user cannot log in" has something to prove. A mission lead rather than a crew
+member precisely so FR-4 above still holds without a crew profile for an account that cannot log
+in.
+
 ## Error handling
 
 | Condition | Behaviour |

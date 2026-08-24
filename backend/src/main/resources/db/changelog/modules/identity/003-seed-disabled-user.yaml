@@ -1,0 +1,33 @@
+# identity module - seed data, addendum
+#
+# One DISABLED user, so feature 02's "a disabled user cannot log in" acceptance
+# criterion has something real to prove. Every user seeded in 002 is ACTIVE.
+#
+# A new file rather than an edit to 002-seed-identity.yaml: that changeset has
+# already been applied to running databases, and editing an applied changeset
+# fails on the checksum. `includeAll` sorts lexicographically within the module
+# directory, so 003 lands after 002 with no change to the master changelog.
+#
+# A MISSION_LEAD rather than a CREW_MEMBER, deliberately. 01-seed-data requires a
+# crew_member row for every CREW_MEMBER user (FR-4, BR-5), so seeding a disabled
+# crew member would mean seeding a crew profile too - which changes Orbital
+# Dynamics' crew count, contradicts a comment inside an already-applied changeset,
+# and puts a disabled user into the candidate pool that feature 06's worked
+# example depends on. A mission lead needs none of that and proves the same rule.
+#
+# Same BCrypt hash as everyone else (`Password123!`), so a rejected login proves
+# the status check rather than an incidentally wrong password.
+databaseChangeLog:
+  - changeSet:
+      id: identity-seed-003-disabled-user
+      author: mission-control
+      contextFilter: seed
+      comment: A DISABLED mission lead. status 2, per the pinned UserStatus codes.
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO app_user (id, organisation_id, email, password_hash, full_name, role, status, created_at, updated_at) VALUES
+                ('a1000000-0000-0000-0000-000000000012', 'a0000000-0000-0000-0000-000000000001', 'oona.halvorsen@orbitaldynamics.example', '$2a$10$R2yGIITS2Q3tIoxbpvtxteO1M5x/TP2fKRYh47UVoNb3I.98iSBR.', 'Oona Halvorsen', 2, 2, '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00');
+      rollback:
+        - sql:
+            sql: DELETE FROM app_user WHERE id = 'a1000000-0000-0000-0000-000000000012';

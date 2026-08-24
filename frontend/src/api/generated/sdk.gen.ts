@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { GetSystemInfoData, GetSystemInfoResponses } from './types.gen';
+import type { CurrentUserData, CurrentUserErrors, CurrentUserResponses, GetSystemInfoData, GetSystemInfoResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -19,8 +19,48 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
 };
 
 /**
+ * Log out
+ *
+ * Revokes every token issued to the caller, not only the one presented.
+ */
+export const logout = <ThrowOnError extends boolean = false>(options?: Options<LogoutData, ThrowOnError>): RequestResult<LogoutResponses, LogoutErrors, ThrowOnError> => (options?.client ?? client).post<LogoutResponses, LogoutErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/auth/logout',
+    ...options
+});
+
+/**
+ * Log in
+ *
+ * Exchanges an email and password for a signed token valid for 8 hours. An unknown email and a wrong password return the same error, deliberately.
+ */
+export const login = <ThrowOnError extends boolean = false>(options: Options<LoginData, ThrowOnError>): RequestResult<LoginResponses, LoginErrors, ThrowOnError> => (options.client ?? client).post<LoginResponses, LoginErrors, ThrowOnError>({
+    url: '/api/auth/login',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
  * Get system information
  *
  * Returns the application name, build version, active Spring profiles and current server time.
  */
-export const getSystemInfo = <ThrowOnError extends boolean = false>(options?: Options<GetSystemInfoData, ThrowOnError>): RequestResult<GetSystemInfoResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetSystemInfoResponses, unknown, ThrowOnError>({ url: '/api/system/info', ...options });
+export const getSystemInfo = <ThrowOnError extends boolean = false>(options?: Options<GetSystemInfoData, ThrowOnError>): RequestResult<GetSystemInfoResponses, unknown, ThrowOnError> => (options?.client ?? client).get<GetSystemInfoResponses, unknown, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/system/info',
+    ...options
+});
+
+/**
+ * Get the current user
+ *
+ * The caller's identity and role.
+ */
+export const currentUser = <ThrowOnError extends boolean = false>(options?: Options<CurrentUserData, ThrowOnError>): RequestResult<CurrentUserResponses, CurrentUserErrors, ThrowOnError> => (options?.client ?? client).get<CurrentUserResponses, CurrentUserErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/auth/me',
+    ...options
+});

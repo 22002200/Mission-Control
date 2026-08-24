@@ -27,6 +27,9 @@ export default defineConfig({
   test: {
     environment: 'jsdom',
     globals: true,
+    // Registers @testing-library/jest-dom's matchers. Without it `toBeInTheDocument()` and
+    // friends are not defined.
+    setupFiles: ['./src/test/setup.ts'],
     include: ['src/**/*.{test,spec}.{ts,tsx}'],
   },
 });

@@ -79,17 +79,33 @@ Logout invalidates **every** token for that user, not just the one presented. Se
 
 ## Acceptance criteria
 
-- [ ] A seeded user can log in and receives a token.
-- [ ] A wrong password returns 401 with no indication of whether the email exists.
-- [ ] An unknown email returns the same 401 as a wrong password.
-- [ ] A disabled user cannot log in.
-- [ ] `/api/auth/me` returns the caller's own record.
-- [ ] Any `/api/**` call without a token returns 401.
-- [ ] A token surviving past its 8-hour expiry is rejected.
-- [ ] After logout, the token used to log out is rejected.
-- [ ] After logout, a *different* token issued earlier to the same user is also rejected.
+- [x] A seeded user can log in and receives a token.
+- [x] A wrong password returns 401 with no indication of whether the email exists.
+- [x] An unknown email returns the same 401 as a wrong password.
+- [x] A disabled user cannot log in.
+- [x] `/api/auth/me` returns the caller's own record.
+- [x] Any `/api/**` call without a token returns 401.
+- [x] A token surviving past its 8-hour expiry is rejected.
+- [x] After logout, the token used to log out is rejected.
+- [x] After logout, a *different* token issued earlier to the same user is also rejected.
 - [ ] A user from organisation A requesting a resource in organisation B receives 404, not 403.
-- [ ] No password, hash or token appears in application logs.
+      **Deferred to [03](03-skill-catalogue.md).** No endpoint in this feature takes a resource id,
+      so there is no cross-tenant fetch to attempt and nothing distinguishes a 404 from a 403. The
+      mechanism it depends on — the organisation coming from the token and nowhere else — is in
+      place and covered by `TenantScopingIT`; `GET /api/skills/{id}` is the first endpoint that can
+      actually demonstrate the rule.
+- [x] No password, hash or token appears in application logs. Verified for the application's own
+      logging at TRACE. Note that Spring MVC logs request bodies if `org.springframework.web` is
+      raised to DEBUG, so that stays a configuration rule rather than something code can enforce.
+
+## Notes from the build
+
+- **A disabled account still answers 403 `account-disabled`, which does reveal that the account
+  exists.** That is what the error table above specifies, so it is what was built, but it means
+  NFR-2's anti-enumeration property is complete only for unknown-email versus wrong-password. The
+  status is checked *after* the password, so the disclosure needs valid credentials.
+- **Logout is global**, and a token issued before it is rejected by comparing against a private
+  `iat_ms` claim rather than the standard second-resolution `iat` — see `JwtClaims`.
 
 ## Error handling
 

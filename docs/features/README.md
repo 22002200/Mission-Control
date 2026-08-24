@@ -51,8 +51,12 @@ to the data model.
 
 These apply to every spec and are not repeated in each one.
 
-**Errors** are RFC 9457 `application/problem+json`, produced by the existing
-[`GlobalExceptionHandler`](../../backend/src/main/java/com/missioncontrol/platform/GlobalExceptionHandler.java).
+**Errors** are RFC 9457 `application/problem+json`, produced by
+[`GlobalExceptionHandler`](../../backend/src/main/java/com/missioncontrol/platform/GlobalExceptionHandler.java)
+for anything raised in a controller, and by `ProblemAuthenticationEntryPoint` /
+`ProblemAccessDeniedHandler` for 401s and 403s detected in the security filter chain, which never
+reach an `@RestControllerAdvice`. Both paths build their bodies from the same helper so a client
+cannot tell which one answered.
 
 | Status | Meaning |
 | --- | --- |

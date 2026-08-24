@@ -15,7 +15,7 @@ adding the first one.
 | Backend   | Java 21, Spring Boot 3.5.16, Spring Modulith 1.4.12, Maven (via wrapper) |
 | Database  | PostgreSQL 18, schema managed by Liquibase                              |
 | API docs  | springdoc-openapi 2.9.0 (`/swagger-ui.html`)                            |
-| Frontend  | React 19.2.8, TypeScript 6.0.3, Vite 8, TanStack Query 5               |
+| Frontend  | React 19.2.8, TypeScript 6.0.3, Vite 8, TanStack Query 5, MUI 9         |
 | API client| Generated from the OpenAPI spec by `@hey-api/openapi-ts`                |
 | Local dev | Docker Compose v5                                                       |
 
@@ -37,6 +37,9 @@ adding the first one.
 cp .env.example .env
 docker compose up --build --watch
 ```
+
+`.env` supplies the JWT signing secret. There is no default baked into the build, so Compose
+refuses to start without `JWT_SECRET` set - copying `.env.example` is what provides it.
 
 | Service      | URL                                   |
 | ------------ | ------------------------------------- |
@@ -67,6 +70,10 @@ exercised rather than assumed. See [`docs/features/01-seed-data.md`](docs/featur
 | Helios Aerospace | Mission Lead | `sofia.mendes@heliosaero.example` |
 | Helios Aerospace | Mission Lead | `daniel.okafor@heliosaero.example` |
 | Helios Aerospace | Crew (×6) | `ines.varga@`, `jonas.petrov@`, `kira.almeida@`, `liam.ferreira@`, `maya.tanaka@`, `nikolai.berg@` `heliosaero.example` |
+| Orbital Dynamics | Mission Lead — **disabled** | `oona.halvorsen@orbitaldynamics.example` |
+
+`oona.halvorsen@` exists to demonstrate that a non-`ACTIVE` account cannot log in: the password is
+correct and the request is still refused, with `403 urn:mission-control:account-disabled`.
 
 These credentials are demo data and are deliberately weak. Seed changesets are tagged with the
 Liquibase context `seed`, which only the `local` and `docker` profiles activate — a deployment
@@ -77,6 +84,46 @@ To run against a database with schema but no demo data:
 ```bash
 SPRING_LIQUIBASE_CONTEXTS=default docker compose up backend
 ```
+
+## Authentication
+
+Every `/api` endpoint except `POST /api/auth/login` requires a bearer token.
+
+| Method | Path | Purpose |
+| --- | --- | --- |
+| POST | `/api/auth/login` | Exchange email and password for a token |
+| POST | `/api/auth/logout` | Revoke the caller's tokens |
+| GET  | `/api/auth/me` | The caller's identity and role |
+
+```bash
+TOKEN=$(curl -s -X POST localhost:8080/api/auth/login   -H 'Content-Type: application/json'   -d '{"email":"vera.lindholm@orbitaldynamics.example","password":"Password123!"}'   | sed -E 's/.*"token":"([^"]+)".*//')
+
+curl -s localhost:8080/api/auth/me -H "Authorization: Bearer $TOKEN"
+```
+
+Three things worth knowing:
+
+- **Tokens last 8 hours and there is no refresh token.** When one expires, log in again.
+- **Logout revokes every token that user holds**, not just the one presented. It works by stamping
+  `tokens_valid_from` on the user rather than by keeping a blacklist, so any token issued before
+  that instant stops being accepted. Per-device logout would need a token table; see the open
+  question in [`docs/data-model.md`](docs/data-model.md#open-questions).
+- **An unknown email and a wrong password return the identical 401**, deliberately, so login cannot
+  be used to discover which addresses have accounts.
+
+`/api/system/info` is now behind authentication too, so the frontend shows it only once signed in.
+That is the intended behaviour, not a regression.
+
+In the UI, signing in reveals an account menu pinned to the top-right corner: the user's name with
+a dropdown arrow, opening onto their role, organisation and a **Sign out** item.
+
+### A note on styling
+
+Two systems coexist, on purpose. The shell and the login form use the hand-rolled `mc-` classes in
+`src/index.css`; the account menu uses MUI, themed in `src/theme.ts` to the same six colours. MUI
+was introduced for the dropdown specifically - `Menu` already handles focus trapping, keyboard
+navigation, Escape and click-away, which is most of what a correct dropdown is. There is no
+`CssBaseline`, because it would reset the body styling `index.css` owns.
 
 ### Why `--watch`
 
@@ -139,8 +186,19 @@ running backend.
 After changing any controller or DTO, with the backend running:
 
 ```bash
-docker compose exec frontend npm run generate:api
+# 1. generate, inside the container, against the backend on the project network
+docker compose exec -e OPENAPI_URL=http://backend:8080/v3/api-docs frontend npm run generate:api
+
+# 2. copy the result back onto the host, because it is committed
+docker compose cp frontend:/app/src/api/generated ./frontend/src/api/generated
 ```
+
+Both steps are needed, and neither is obvious:
+
+- `openapi-ts.config.ts` defaults to `http://localhost:8080/v3/api-docs`, which inside the frontend
+  container resolves to the frontend itself. `OPENAPI_URL` points it at the backend service.
+- Compose `develop.watch` syncs **host to container only**. Without the copy back, the generator's
+  output lives in the container and the committed client silently stays stale.
 
 Because the output is typed, a backend contract change surfaces as a TypeScript compile error at
 every affected call site rather than a runtime 404. Regenerating is not optional — treat a stale
@@ -153,16 +211,42 @@ output stable and pleasant to consume; both have comments explaining why:
 - `SystemInfo` marks its fields `REQUIRED`, so the generated TypeScript properties are
   non-optional.
 
+## Testing
+
+| Tier | Command | What it covers |
+| --- | --- | --- |
+| Unit + API + boundaries | `docker compose run --rm backend ./mvnw test` | Token minting and validation, login rules, problem responses, the filter-chain policy, and `ModularityTests` |
+| Integration | `cd backend && ./mvnw verify` *(on the host)* | The whole application against a real PostgreSQL and the real seed data |
+| Frontend | `docker compose exec frontend npm test` | Session storage, the auth provider, the login form, the account menu, and which screen renders |
+
+**Integration tests do not run in the dev container.** They use Testcontainers, which needs a
+Docker socket, and the backend service has none - so `./mvnw test` inside Compose stays
+container-free and the `*IT` classes are bound to `verify` via failsafe instead. Run those on the
+host, where Docker Desktop is available. Host builds need JDK 21:
+
+```bash
+cd backend
+JAVA_HOME="C:/Users/61449/.jdks/temurin-21.0.12" ./mvnw verify
+```
+
+All the integration tests share a single container and a single Spring context. Because they also
+share one database, and logout writes to the user row, each test class works with its own seeded
+accounts - see the note in `AbstractIntegrationTest`.
+
 ## Common commands
 
 ```bash
 # Backend
-docker compose run --rm backend ./mvnw test           # module boundary checks
+docker compose run --rm backend ./mvnw test           # unit, API and module-boundary tests
 docker compose run --rm backend ./mvnw package        # build the jar
 docker compose exec db psql -U missioncontrol -d missioncontrol   # psql shell
 docker compose logs -f backend
 
+# Backend integration tests (Testcontainers - needs a Docker daemon, so run on the host)
+cd backend && JAVA_HOME="C:/Users/61449/.jdks/temurin-21.0.12" ./mvnw verify
+
 # Frontend
+docker compose exec frontend npm test
 docker compose exec frontend npm run typecheck
 docker compose exec frontend npm run lint
 docker compose exec frontend npm run build
@@ -176,11 +260,13 @@ docker compose down -v
 
 These are deliberate, not oversights:
 
-- **There is no authentication.** Spring Security is wired up but every endpoint is
-  `permitAll()`. See the `TODO(auth)` in `SecurityConfig`. Do not expose this beyond localhost.
-- **Test coverage is one test.** `ModularityTests` enforces the module boundaries (see
-  [`docs/architecture.md`](docs/architecture.md#enforcement)). There are no integration tests and
-  no frontend tests; the dependencies for both are declared and ready to use. Note that because
-  both current modules are `OPEN`, the boundary check has little to bite on until the first
-  closed domain module exists.
-- **There are no domain modules yet** — no Mission, Crew, or Assignment.
+- **No refresh tokens, and logout is global.** An expired session means logging in again, and
+  signing out on one device signs out everywhere.
+- **No user management.** Accounts exist only because feature 01 seeds them; there is no
+  registration, invite or password-reset flow.
+- **Cross-tenant 404s are enforceable but not yet demonstrable.** The rule that a resource in
+  another organisation is reported as 404 rather than 403 is what `CurrentUser` exists to make
+  possible, but no endpoint takes a resource id yet. Feature 03 is the first that can show it.
+- **The remaining domain modules are missing** — no Mission, Crew, Skill or Assignment.
+- **Demo secrets.** `JWT_SECRET` and the database password in `.env.example` are development
+  values. Nothing here is a deployment manifest.

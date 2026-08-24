@@ -4,6 +4,46 @@ export type ClientOptions = {
     baseUrl: `${string}://${string}` | (string & {});
 };
 
+export type ProblemDetail = {
+    type?: string;
+    title?: string | null;
+    status?: number;
+    detail?: string | null;
+    instance?: string | null;
+    properties?: {
+        [key: string]: unknown;
+    } | null;
+};
+
+/**
+ * Email and password.
+ */
+export type LoginRequest = {
+    email: string;
+    password: string;
+};
+
+/**
+ * The authenticated user's identity and role.
+ */
+export type CurrentUserResponse = {
+    id: string;
+    fullName: string;
+    email: string;
+    role: 'DIRECTOR' | 'MISSION_LEAD' | 'CREW_MEMBER';
+    organisationId: string;
+    organisationName: string;
+};
+
+/**
+ * An access token and the user it identifies.
+ */
+export type LoginResponse = {
+    token: string;
+    expiresAt: string;
+    user: CurrentUserResponse;
+};
+
 /**
  * Basic facts about the running Mission Control instance.
  */
@@ -13,6 +53,64 @@ export type SystemInfo = {
     activeProfiles: Array<string>;
     serverTime: string;
 };
+
+export type LogoutData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/auth/logout';
+};
+
+export type LogoutErrors = {
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+};
+
+export type LogoutError = LogoutErrors[keyof LogoutErrors];
+
+export type LogoutResponses = {
+    /**
+     * Tokens revoked
+     */
+    204: void;
+};
+
+export type LogoutResponse = LogoutResponses[keyof LogoutResponses];
+
+export type LoginData = {
+    body: LoginRequest;
+    path?: never;
+    query?: never;
+    url: '/api/auth/login';
+};
+
+export type LoginErrors = {
+    /**
+     * Missing or malformed body
+     */
+    400: ProblemDetail;
+    /**
+     * Invalid credentials
+     */
+    401: ProblemDetail;
+    /**
+     * Account is not active
+     */
+    403: ProblemDetail;
+};
+
+export type LoginError = LoginErrors[keyof LoginErrors];
+
+export type LoginResponses = {
+    /**
+     * Authenticated
+     */
+    200: LoginResponse;
+};
+
+export type LoginResponse2 = LoginResponses[keyof LoginResponses];
 
 export type GetSystemInfoData = {
     body?: never;
@@ -29,3 +127,28 @@ export type GetSystemInfoResponses = {
 };
 
 export type GetSystemInfoResponse = GetSystemInfoResponses[keyof GetSystemInfoResponses];
+
+export type CurrentUserData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/auth/me';
+};
+
+export type CurrentUserErrors = {
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+};
+
+export type CurrentUserError = CurrentUserErrors[keyof CurrentUserErrors];
+
+export type CurrentUserResponses = {
+    /**
+     * The authenticated user
+     */
+    200: CurrentUserResponse;
+};
+
+export type CurrentUserResponse2 = CurrentUserResponses[keyof CurrentUserResponses];

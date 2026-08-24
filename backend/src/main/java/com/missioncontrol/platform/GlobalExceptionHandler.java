@@ -1,16 +1,20 @@
 package com.missioncontrol.platform;
 
 import jakarta.validation.ConstraintViolationException;
-import java.net.URI;
 import java.util.Map;
 import java.util.TreeMap;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.core.Ordered;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 /**
  * Translates exceptions into RFC 9457 {@code application/problem+json} responses.
@@ -18,13 +22,68 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
  * <p>Using {@link ProblemDetail} keeps error shapes consistent across every module and gives the
  * generated TypeScript client a single error type to model, instead of each module inventing its
  * own error envelope.
+ *
+ * <p>Errors detected inside the security filter chain never reach this class - they are written by
+ * {@link ProblemAuthenticationEntryPoint} and {@link ProblemAccessDeniedHandler} instead. Both
+ * paths build their bodies from the same helpers so the two are indistinguishable to a client.
+ *
+ * <p>Ordered last so that a more specific advice added later wins without anyone having to
+ * remember why.
  */
+@Order(Ordered.LOWEST_PRECEDENCE)
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-    private static final URI VALIDATION_TYPE = URI.create("urn:mission-control:validation-failed");
-    private static final URI INTERNAL_TYPE = URI.create("urn:mission-control:internal-error");
+
+    /**
+     * Any module's declared API error. One handler serves them all - see
+     * {@link ApiProblemException}.
+     *
+     * <p>Logged at debug, not error: these are expected outcomes, and a stack trace per failed
+     * login would drown the log. Nothing about the exception is logged beyond its type and detail,
+     * neither of which carries a credential.
+     */
+    @ExceptionHandler(ApiProblemException.class)
+    public ProblemDetail handleApiProblem(ApiProblemException ex) {
+        log.debug("Request rejected: {} ({})", ex.getMessage(), ex.getStatus());
+        return ex.toProblemDetail();
+    }
+
+    /**
+     * An {@link AccessDeniedException} raised <em>inside</em> a handler method - by
+     * {@code @PreAuthorize}, for instance.
+     *
+     * <p>This one is easy to miss. Such an exception is resolved by MVC before
+     * {@code ExceptionTranslationFilter} ever sees it, so without this handler the catch-all below
+     * would turn every role denial into a 500.
+     */
+    @ExceptionHandler(AccessDeniedException.class)
+    public ProblemDetail handleAccessDenied(AccessDeniedException ex) {
+        return SecurityProblems.forbidden();
+    }
+
+    /** As above, for an authentication failure surfacing on the MVC path. */
+    @ExceptionHandler(AuthenticationException.class)
+    public ProblemDetail handleAuthentication(AuthenticationException ex) {
+        return SecurityProblems.unauthenticated();
+    }
+
+    /**
+     * A request to a path with no handler.
+     *
+     * <p>Without this the catch-all below would report a mistyped URL as a 500, which is both
+     * wrong and actively misleading when debugging - it suggests the server broke rather than that
+     * the caller asked for something that does not exist.
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    public ProblemDetail handleNoResourceFound(NoResourceFoundException ex) {
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.NOT_FOUND, "No such resource.");
+        problem.setTitle("Not found");
+        problem.setType(ProblemTypes.NOT_FOUND);
+        return problem;
+    }
 
     /** Bean-validation failures on {@code @Valid @RequestBody} arguments. */
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -36,7 +95,7 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.BAD_REQUEST, "One or more fields are invalid.");
         problem.setTitle("Validation failed");
-        problem.setType(VALIDATION_TYPE);
+        problem.setType(ProblemTypes.VALIDATION_FAILED);
         problem.setProperty("errors", errors);
         return problem;
     }
@@ -47,7 +106,7 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.BAD_REQUEST, ex.getMessage());
         problem.setTitle("Validation failed");
-        problem.setType(VALIDATION_TYPE);
+        problem.setType(ProblemTypes.VALIDATION_FAILED);
         return problem;
     }
 
@@ -62,7 +121,7 @@ public class GlobalExceptionHandler {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred.");
         problem.setTitle("Internal server error");
-        problem.setType(INTERNAL_TYPE);
+        problem.setType(ProblemTypes.INTERNAL_ERROR);
         return problem;
     }
 }

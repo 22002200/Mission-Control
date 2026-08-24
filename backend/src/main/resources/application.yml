@@ -72,11 +72,19 @@ missioncontrol:
 
   security:
     jwt:
-      # Placeholders. Nothing reads these yet - see SecurityConfig TODO(auth).
       issuer: mission-control
       audience: mission-control-web
-      access-token-ttl: PT15M
+      # Eight hours, and no refresh token: the user logs in again. Long enough for
+      # a working day, short enough that a leaked token is not indefinite.
+      access-token-ttl: PT8H
+      # Deliberately has no fallback. A signing key compiled into the build is a
+      # signing key handed to everyone who can read the build, so this comes from
+      # the environment or the application refuses to start. See .env.example.
+      secret: ${JWT_SECRET:}
 
 logging:
   level:
     com.missioncontrol: INFO
+    # Security internals log tokens and principals at DEBUG. Pinned at INFO so a
+    # broad debug setting elsewhere cannot start writing credentials to the log.
+    org.springframework.security: INFO

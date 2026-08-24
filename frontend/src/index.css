@@ -25,7 +25,9 @@ body {
 .mc-shell {
   max-width: 46rem;
   margin: 0 auto;
-  padding: 3rem 1.5rem;
+  /* Extra top padding leaves room for the account menu, which is fixed to the viewport corner
+     and therefore outside this column's flow. */
+  padding: 4.5rem 1.5rem 3rem;
 }
 
 .mc-title {
@@ -79,4 +81,64 @@ code {
   font-family: 'Cascadia Code', Consolas, monospace;
   font-size: 0.9em;
   color: var(--mc-accent);
+}
+
+/* --- Authentication ------------------------------------------------------ */
+
+.mc-login {
+  max-width: 26rem;
+}
+
+.mc-form {
+  display: grid;
+  gap: 1rem;
+}
+
+.mc-field {
+  display: grid;
+  gap: 0.35rem;
+}
+
+.mc-label {
+  font-size: 0.85rem;
+  color: var(--mc-muted);
+}
+
+.mc-input {
+  width: 100%;
+  padding: 0.55rem 0.7rem;
+  font: inherit;
+  color: var(--mc-text);
+  background: var(--mc-bg);
+  border: 1px solid var(--mc-border);
+  border-radius: 0.5rem;
+}
+
+.mc-input:focus-visible {
+  outline: 2px solid var(--mc-accent);
+  outline-offset: 1px;
+}
+
+.mc-button {
+  justify-self: start;
+  padding: 0.55rem 1.1rem;
+  font: inherit;
+  font-weight: 600;
+  color: var(--mc-bg);
+  background: var(--mc-accent);
+  border: 1px solid transparent;
+  border-radius: 0.5rem;
+  cursor: pointer;
+}
+
+.mc-button:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+
+.mc-hint {
+  margin: 1.25rem 0 0;
+  font-size: 0.85rem;
+  color: var(--mc-muted);
 }

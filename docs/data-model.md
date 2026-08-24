@@ -139,7 +139,7 @@ stored, so changing it silently re-points existing rows at a different value.
 
 | Enum | Codes |
 | --- | --- |
-| `UserRole` | 1 `DIRECTOR`, 2 `MISSION_LEAD`, 3 `CREW_MEMBER` |
+| `UserRole` | 1 `DIRECTOR`, 2 `MISSION_LEAD`, 3 `CREW_MEMBER` (the type lives in `shared`, not `identity` - see architecture.md) |
 | `UserStatus` | 1 `ACTIVE`, 2 `DISABLED` |
 | `MissionStatus` | 1 `PLAN`, 2 `PENDING_APPROVAL`, 3 `APPROVED`, 4 `REJECTED`, 5 `ACTIVE`, 6 `CLOSED` |
 | `MissionCloseReason` | 1 `COMPLETED`, 2 `ABORTED`, 3 `REJECTED` |
@@ -245,7 +245,10 @@ Computed on read. Storing them would create a second source of truth that drifts
 ## Open questions
 
 - **Logout scope.** `tokensValidFrom` invalidates *all* of a user's tokens, not just the current
-  device. Simple, and needs no token table; revisit if per-device logout is wanted.
+  device. Simple, and needs no token table; revisit if per-device logout is wanted. Implemented in
+  [02](features/02-authentication.md). One wrinkle worth recording: the comparison is against a
+  millisecond-precision `iat_ms` claim, because a JWT's standard `iat` is whole seconds and this
+  column is not, so comparing them directly is wrong in one direction or the other.
 - **Mission edits after approval (M5).** Reverting to `PLAN` is the reading that satisfies both
   "edit at any time" and "resubmit for approval". What happens to crew who already accepted is
   not yet decided — currently they keep their assignments.

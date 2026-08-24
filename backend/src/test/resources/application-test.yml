@@ -1,0 +1,27 @@
+# Configuration for every test that starts a Spring context.
+#
+# Activated with @ActiveProfiles("test"). A profile-specific document rather than
+# an application.properties override, because profile config reliably wins over
+# the default one - the relative precedence of application.properties and
+# application.yml at the same location is a detail nobody should have to recall.
+#
+# Note there is no `missioncontrol.version` here: the main application.yml is on
+# the test classpath and supplies it, filtered by Maven at build time. Test
+# resources are NOT filtered, so an @...@ placeholder must never appear here.
+spring:
+  liquibase:
+    # Integration tests assert against the seeded organisations and users.
+    contexts: default,seed
+
+missioncontrol:
+  security:
+    jwt:
+      # Fixed, so a token minted in one test is verifiable in another. Only ever
+      # used by tests; the real secret comes from JWT_SECRET in the environment.
+      secret: integration-test-signing-secret-not-used-anywhere-real
+
+logging:
+  level:
+    org.testcontainers: WARN
+    com.github.dockerjava: WARN
+    com.zaxxer.hikari: WARN

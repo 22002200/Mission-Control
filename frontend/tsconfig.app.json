@@ -7,7 +7,9 @@
     "moduleResolution": "bundler",
     "moduleDetection": "force",
     "jsx": "react-jsx",
-    "types": ["vite/client"],
+    // vitest/globals matches `globals: true` in vite.config.ts, so describe/it/expect type-check
+    // without an import in every test file.
+    "types": ["vite/client", "vitest/globals", "@testing-library/jest-dom"],
 
     "strict": true,
     "noUnusedLocals": true,

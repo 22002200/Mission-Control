@@ -51,6 +51,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-missioncontrol}
       DB_USERNAME: ${POSTGRES_USER:-missioncontrol}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-missioncontrol}
+      # `:?` so a missing secret fails Compose with a readable message rather than
+      # letting the backend start and die on a validation error.
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set - copy .env.example to .env}
       # Compose watch already restarts this container on a source change, so DevTools'
       # restart classloader is pure overhead here. It has to be a system property set
       # before Spring starts: the equivalent application.yml property stops the

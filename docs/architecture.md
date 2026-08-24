@@ -17,8 +17,8 @@ the whole model follows from it.
 com.missioncontrol
 ├── MissionControlApplication      <- root package: visible to everything
 ├── platform                       <- OPEN module (infrastructure)
-├── shared                         <- OPEN module (shared kernel, currently empty)
-├── identity                       <- planned: Organisation, User
+├── shared                         <- OPEN module (shared kernel: UserRole)
+├── identity                       <- Organisation, User (first closed module)
 ├── skill                          <- planned: skill catalogue
 ├── crew                           <- planned: CrewMember, CrewSkill
 ├── mission                        <- planned: Mission and its requirements
@@ -57,9 +57,10 @@ without an explicit allow-list entry.
 - **`platform`** — cross-cutting infrastructure: security, CORS, OpenAPI metadata, error
   handling, and the `/api/system/info` diagnostic endpoint. Keep it free of domain concepts. If
   something here starts to know what a Mission is, it belongs in a domain module.
-- **`shared`** — the shared kernel, currently and deliberately empty. Add a type here only once
-  a *second* module genuinely needs it. Premature sharing is exactly how module boundaries
-  dissolve.
+- **`shared`** — the shared kernel. Holds exactly one type, `UserRole`, which is there because
+  `platform` must describe the role of an authenticated caller and cannot depend on `identity`
+  without creating a cycle. Add a type here only once a *second* module genuinely needs it.
+  Premature sharing is exactly how module boundaries dissolve.
 
 ## How modules communicate
 
@@ -240,16 +241,21 @@ That output is real: the guard was validated by temporarily adding two closed mo
 deliberate violation, confirming the build failed, and removing them again. A guardrail nobody
 has watched fail is not yet a guardrail.
 
-### The caveat that matters right now
+### What it now catches
 
-**An `OPEN` module exposes everything by design, so violations against it cannot be detected.**
-Both current modules — `platform` and `shared` — are open infrastructure, which means the test
-has almost nothing to bite on today. It passes because there is nothing yet to catch, not because
-it is proving much.
+`identity` is the first **closed** module, so the check has something to bite on. Concretely it
+fails the build on:
 
-It becomes load-bearing the moment the first **closed** domain module lands. It exists now so
-that boundary enforcement is already in place on the day it starts to matter, rather than being
-retrofitted onto code that has already grown around its absence.
+- any reference from outside `identity` to a type in `identity.internal` — which today is the
+  whole module, since it publishes no `api` package yet;
+- `identity` depending on anything beyond its declared `allowedDependencies` of `platform` and
+  `shared`;
+- **`platform` depending on `identity`**, reported as a cycle. This is the specific mistake
+  authentication invites, because the token check needs identity's data while running inside
+  platform's decoder. The design below exists to satisfy that guard rather than work around it.
+
+`OPEN` modules still expose everything by design, so violations *against* `platform` and `shared`
+remain undetectable. That is the price of them being open infrastructure.
 
 ### Generated documentation
 
@@ -293,14 +299,24 @@ speculation. The one rule that matters:
 backend's OpenAPI document. When the backend contract changes, regenerate; TypeScript will then
 point at every call site that needs updating.
 
+**Styling is deliberately mixed.** Hand-rolled `mc-` classes in `index.css` for the shell and the
+login form, MUI for the account menu. MUI earns its place where a component has real interaction
+behaviour to get right — the dropdown needs focus trapping, keyboard navigation, Escape and
+click-away — and not merely to make a box look like a box. `src/theme.ts` maps MUI onto the same
+palette so the two are indistinguishable on screen.
+
 ## Open decisions
 
 Things deliberately not settled yet, recorded so they are not silently forgotten:
 
-- **Authentication.** Spring Security is wired but everything is `permitAll()`. `JwtProperties`
-  sketches the intended configuration shape. Logout will revoke tokens via a `tokensValidFrom`
-  instant on `User` — see the open questions in [`data-model.md`](data-model.md#open-questions).
-- **Frontend routing.** No router yet, because there is one page.
+- **Frontend routing.** Still no router. The app has two states — signed in or not — and
+  conditional rendering in `App.tsx` says that more plainly than a one-entry route table would.
+  Revisit when there is a second authenticated screen.
+- **How far MUI goes.** Currently one component. Migrating the login form and the shell would make
+  the frontend consistent at the cost of a rewrite that buys nothing functional today; leaving it
+  means two styling systems to keep in step. Decide when the next screen lands, not now.
+- **Per-device logout.** `tokensValidFrom` revokes all of a user's tokens at once. Anything finer
+  needs a token table; see [`data-model.md`](data-model.md#open-questions).
 
 Settled since:
 
@@ -308,3 +324,14 @@ Settled since:
   code. See [Data model](#data-model).
 - **Crew members as users** — `CrewMember` is a separate entity in `crew`, 1:1 with a `User` in
   `identity`. Two modules, not one.
+- **Authentication** — HS256 tokens signed with a configured secret, 8-hour lifetime, no refresh.
+  The decisions worth recording:
+
+  | Decision | Why |
+  | --- | --- |
+  | `platform` owns both the encoder and the decoder | One place reads the signing secret. `identity` asks `TokenIssuer` for a token and never handles a key or a claim name. |
+  | Revocation is an `OAuth2TokenValidator<Jwt>` contributed by `identity` | The check needs identity's data but runs inside platform's decoder, and `platform → identity` is a cycle. Contributing a Spring Security type means the seam needs no bespoke interface, and platform never learns who supplied it. Same shape as the existing `ObjectProvider<CorsConfigurationSource>` lookup. |
+  | `UserRole` lives in `shared`, not `identity.api` | `platform.AuthenticatedUser` has to name a role. This departs from the ownership table in `data-model.md`, which puts role with `User`; the cycle makes that impossible. |
+  | A private `iat_ms` claim drives revocation | JWT `iat` is whole seconds but `tokens_valid_from` is microseconds. Comparing them directly either rejects a token minted moments after a logout, or lets the token used to log out survive it. |
+  | Problem responses are built in one place | Spring Security's entry point and access-denied handler bypass `@RestControllerAdvice`, so without a shared writer the same error would come back in two shapes depending on where it was detected. |
+  | `CurrentUser` is an injected bean | Not a static holder (untestable) and not a resolved controller argument, which springdoc would publish as a query parameter unless every occurrence remembered to hide it — and the generated client is committed. |

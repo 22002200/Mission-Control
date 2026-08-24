@@ -74,10 +74,9 @@
         </dependency>
 
         <!-- =========================== Security ==========================
-             Structural only for now: the filter chain permits everything.
              oauth2-resource-server brings in Nimbus JOSE (version-managed by
-             the Boot BOM), which is what will decode/encode JWTs once auth is
-             actually implemented. See SecurityConfig's TODO(auth).
+             the Boot BOM), which mints and verifies the HS256 tokens. See
+             platform/JwtSecurityConfig.
         -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -117,12 +116,22 @@
             <artifactId>spring-boot-configuration-processor</artifactId>
             <optional>true</optional>
         </dependency>
+        <!--
+          Lombok generates the getters and builders on the JPA entities, per the
+          convention in CLAUDE.md. Compile-time only: it is not on the runtime
+          classpath and is excluded from the repackaged jar below.
+        -->
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <optional>true</optional>
+        </dependency>
 
         <!-- ============================== Test ===========================
              spring-modulith-starter-test backs ModularityTests, which enforces
              the module boundaries (and pulls in spring-modulith-docs for the
-             generated module diagrams). The rest are declared ahead of use so
-             the first integration test needs no POM change.
+             generated module diagrams). Testcontainers backs the *IT classes,
+             which run under failsafe - see the plugin section below.
         -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -167,8 +176,32 @@
                             <groupId>org.springframework.boot</groupId>
                             <artifactId>spring-boot-configuration-processor</artifactId>
                         </exclude>
+                        <exclude>
+                            <groupId>org.projectlombok</groupId>
+                            <artifactId>lombok</artifactId>
+                        </exclude>
                     </excludes>
                 </configuration>
+            </plugin>
+
+            <!--
+              Integration tests (*IT) are split out from unit tests (*Test)
+              because they need Testcontainers, and therefore a Docker daemon.
+              The README's dockerised `mvnw test` command runs inside a
+              container that has no Docker socket, so surefire must stay
+              container-free. Run `mvnw verify` on the host for the full suite.
+            -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
 
             <!--

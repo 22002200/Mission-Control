@@ -3,8 +3,198 @@
 import { type DefaultError, type InfiniteData, infiniteQueryOptions, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { currentUser, getSkill, getSystemInfo, listSkills, login, logout, type Options } from '../sdk.gen';
-import type { CurrentUserData, CurrentUserError, CurrentUserResponse2, GetSkillData, GetSkillError, GetSkillResponse, GetSystemInfoData, GetSystemInfoResponse, ListSkillsData, ListSkillsError, ListSkillsResponse, LoginData, LoginError, LoginResponse2, LogoutData, LogoutError, LogoutResponse } from '../types.gen';
+import { addRequirement, closeMission, createMission, currentUser, deleteRequirement, getMission, getSkill, getSystemInfo, listMissions, listSkills, login, logout, type Options, startMission, updateMission, updateRequirement } from '../sdk.gen';
+import type { AddRequirementData, AddRequirementError, AddRequirementResponse, CloseMissionData, CloseMissionError, CloseMissionResponse, CreateMissionData, CreateMissionError, CreateMissionResponse, CurrentUserData, CurrentUserError, CurrentUserResponse2, DeleteRequirementData, DeleteRequirementError, DeleteRequirementResponse, GetMissionData, GetMissionError, GetMissionResponse, GetSkillData, GetSkillError, GetSkillResponse, GetSystemInfoData, GetSystemInfoResponse, ListMissionsData, ListMissionsError, ListMissionsResponse, ListSkillsData, ListSkillsError, ListSkillsResponse, LoginData, LoginError, LoginResponse2, LogoutData, LogoutError, LogoutResponse, StartMissionData, StartMissionError, StartMissionResponse, UpdateMissionData, UpdateMissionError, UpdateMissionResponse, UpdateRequirementData, UpdateRequirementError, UpdateRequirementResponse } from '../types.gen';
+
+export type QueryKey<TOptions extends Options> = [
+    Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
+        _id: string;
+        _infinite?: boolean;
+        tags?: ReadonlyArray<string>;
+    }
+];
+
+const createQueryKey = <TOptions extends Options>(id: string, options?: TOptions, infinite?: boolean, tags?: ReadonlyArray<string>): [
+    QueryKey<TOptions>[0]
+] => {
+    const params: QueryKey<TOptions>[0] = { _id: id, baseUrl: options?.baseUrl || (options?.client ?? client).getConfig().baseUrl } as QueryKey<TOptions>[0];
+    if (infinite) {
+        params._infinite = infinite;
+    }
+    if (tags) {
+        params.tags = tags;
+    }
+    if (options?.body) {
+        params.body = options.body;
+    }
+    if (options?.headers) {
+        params.headers = options.headers;
+    }
+    if (options?.path) {
+        params.path = options.path;
+    }
+    if (options?.query) {
+        params.query = options.query;
+    }
+    return [params];
+};
+
+export const listMissionsQueryKey = (options?: Options<ListMissionsData>) => createQueryKey('listMissions', options);
+
+/**
+ * List missions
+ *
+ * Scoped by role: a mission lead sees the missions they own, a director sees every mission in the organisation, and a crew member sees only the ones they hold an assignment on. Sorted by start date.
+ */
+export const listMissionsOptions = (options?: Options<ListMissionsData>) => queryOptions<ListMissionsResponse, ListMissionsError, ListMissionsResponse, ReturnType<typeof listMissionsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await listMissions({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: listMissionsQueryKey(options)
+});
+
+const createInfiniteParams = <K extends Pick<QueryKey<Options>[0], 'body' | 'headers' | 'path' | 'query'>>(queryKey: QueryKey<Options>, page: K) => {
+    const params = { ...queryKey[0] };
+    if (page.body) {
+        params.body = {
+            ...queryKey[0].body as any,
+            ...page.body as any
+        };
+    }
+    if (page.headers) {
+        params.headers = {
+            ...queryKey[0].headers,
+            ...page.headers
+        };
+    }
+    if (page.path) {
+        params.path = {
+            ...queryKey[0].path as any,
+            ...page.path as any
+        };
+    }
+    if (page.query) {
+        params.query = {
+            ...queryKey[0].query as any,
+            ...page.query as any
+        };
+    }
+    return params as unknown as typeof page;
+};
+
+export const listMissionsInfiniteQueryKey = (options?: Options<ListMissionsData>): QueryKey<Options<ListMissionsData>> => createQueryKey('listMissions', options, true);
+
+/**
+ * List missions
+ *
+ * Scoped by role: a mission lead sees the missions they own, a director sees every mission in the organisation, and a crew member sees only the ones they hold an assignment on. Sorted by start date.
+ */
+export const listMissionsInfiniteOptions = (options?: Options<ListMissionsData>) => {
+    const opts = infiniteQueryOptions<ListMissionsResponse, ListMissionsError, InfiniteData<ListMissionsResponse>, QueryKey<Options<ListMissionsData>>, number | Pick<QueryKey<Options<ListMissionsData>>[0], 'body' | 'headers' | 'path' | 'query'>>(
+    // @ts-ignore
+    {
+        queryFn: async ({ pageParam, queryKey, signal }) => {
+            // @ts-ignore
+            const page: Pick<QueryKey<Options<ListMissionsData>>[0], 'body' | 'headers' | 'path' | 'query'> = typeof pageParam === 'object' ? pageParam : {
+                query: {
+                    page: pageParam
+                }
+            };
+            const params = createInfiniteParams(queryKey, page);
+            const { data } = await listMissions({
+                ...options,
+                ...params,
+                signal,
+                throwOnError: true
+            });
+            return data;
+        },
+        queryKey: listMissionsInfiniteQueryKey(options)
+    });
+    return opts as Omit<typeof opts, 'initialData'>;
+};
+
+/**
+ * Create a mission
+ *
+ * The new mission starts in PLAN and is owned by the caller. Directors cannot create missions, so a mission always has a mission lead as its owner.
+ */
+export const createMissionMutation = (options?: Partial<Options<CreateMissionData>>): UseMutationOptions<CreateMissionResponse, CreateMissionError, Options<CreateMissionData>> => {
+    const mutationOptions: UseMutationOptions<CreateMissionResponse, CreateMissionError, Options<CreateMissionData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await createMission({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Add a crew requirement
+ *
+ * Only the owning mission lead, and only while the mission is in PLAN.
+ */
+export const addRequirementMutation = (options?: Partial<Options<AddRequirementData>>): UseMutationOptions<AddRequirementResponse, AddRequirementError, Options<AddRequirementData>> => {
+    const mutationOptions: UseMutationOptions<AddRequirementResponse, AddRequirementError, Options<AddRequirementData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await addRequirement({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Start a mission
+ *
+ * Moves an APPROVED mission to ACTIVE. Every crew requirement must be filled first; the conflict response names the ones that are not.
+ */
+export const startMissionMutation = (options?: Partial<Options<StartMissionData>>): UseMutationOptions<StartMissionResponse, StartMissionError, Options<StartMissionData>> => {
+    const mutationOptions: UseMutationOptions<StartMissionResponse, StartMissionError, Options<StartMissionData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await startMission({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Close a mission
+ *
+ * Closing is terminal and is reachable from any other status - this is also how a mission is aborted. Omitting the reason records COMPLETED for a mission that was ACTIVE and ABORTED for anything else.
+ */
+export const closeMissionMutation = (options?: Partial<Options<CloseMissionData>>): UseMutationOptions<CloseMissionResponse, CloseMissionError, Options<CloseMissionData>> => {
+    const mutationOptions: UseMutationOptions<CloseMissionResponse, CloseMissionError, Options<CloseMissionData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await closeMission({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
 
 /**
  * Log out
@@ -44,37 +234,81 @@ export const loginMutation = (options?: Partial<Options<LoginData>>): UseMutatio
     return mutationOptions;
 };
 
-export type QueryKey<TOptions extends Options> = [
-    Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
-        _id: string;
-        _infinite?: boolean;
-        tags?: ReadonlyArray<string>;
-    }
-];
+/**
+ * Remove a crew requirement
+ *
+ * Only the owning mission lead, and only while the mission is in PLAN.
+ */
+export const deleteRequirementMutation = (options?: Partial<Options<DeleteRequirementData>>): UseMutationOptions<DeleteRequirementResponse, DeleteRequirementError, Options<DeleteRequirementData>> => {
+    const mutationOptions: UseMutationOptions<DeleteRequirementResponse, DeleteRequirementError, Options<DeleteRequirementData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await deleteRequirement({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
 
-const createQueryKey = <TOptions extends Options>(id: string, options?: TOptions, infinite?: boolean, tags?: ReadonlyArray<string>): [
-    QueryKey<TOptions>[0]
-] => {
-    const params: QueryKey<TOptions>[0] = { _id: id, baseUrl: options?.baseUrl || (options?.client ?? client).getConfig().baseUrl } as QueryKey<TOptions>[0];
-    if (infinite) {
-        params._infinite = infinite;
-    }
-    if (tags) {
-        params.tags = tags;
-    }
-    if (options?.body) {
-        params.body = options.body;
-    }
-    if (options?.headers) {
-        params.headers = options.headers;
-    }
-    if (options?.path) {
-        params.path = options.path;
-    }
-    if (options?.query) {
-        params.query = options.query;
-    }
-    return [params];
+/**
+ * Replace a crew requirement
+ *
+ * Replaces the requirement whole, skills included. A skill absent from the request is removed, because there is no meaningful partial update of a set.
+ */
+export const updateRequirementMutation = (options?: Partial<Options<UpdateRequirementData>>): UseMutationOptions<UpdateRequirementResponse, UpdateRequirementError, Options<UpdateRequirementData>> => {
+    const mutationOptions: UseMutationOptions<UpdateRequirementResponse, UpdateRequirementError, Options<UpdateRequirementData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await updateRequirement({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+export const getMissionQueryKey = (options: Options<GetMissionData>) => createQueryKey('getMission', options);
+
+/**
+ * Get one mission
+ *
+ * With its crew requirements and staffing counts. A mission the caller cannot see - another organisation, another lead, or one they are not assigned to - is reported as absent rather than as forbidden.
+ */
+export const getMissionOptions = (options: Options<GetMissionData>) => queryOptions<GetMissionResponse, GetMissionError, GetMissionResponse, ReturnType<typeof getMissionQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await getMission({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: getMissionQueryKey(options)
+});
+
+/**
+ * Edit a mission
+ *
+ * Omitted fields are left as they are. Editing an APPROVED or ACTIVE mission returns it to PLAN, because the approval described a plan that no longer exists and it has to be resubmitted.
+ */
+export const updateMissionMutation = (options?: Partial<Options<UpdateMissionData>>): UseMutationOptions<UpdateMissionResponse, UpdateMissionError, Options<UpdateMissionData>> => {
+    const mutationOptions: UseMutationOptions<UpdateMissionResponse, UpdateMissionError, Options<UpdateMissionData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await updateMission({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
 };
 
 export const getSystemInfoQueryKey = (options?: Options<GetSystemInfoData>) => createQueryKey('getSystemInfo', options);
@@ -116,35 +350,6 @@ export const listSkillsOptions = (options?: Options<ListSkillsData>) => queryOpt
     },
     queryKey: listSkillsQueryKey(options)
 });
-
-const createInfiniteParams = <K extends Pick<QueryKey<Options>[0], 'body' | 'headers' | 'path' | 'query'>>(queryKey: QueryKey<Options>, page: K) => {
-    const params = { ...queryKey[0] };
-    if (page.body) {
-        params.body = {
-            ...queryKey[0].body as any,
-            ...page.body as any
-        };
-    }
-    if (page.headers) {
-        params.headers = {
-            ...queryKey[0].headers,
-            ...page.headers
-        };
-    }
-    if (page.path) {
-        params.path = {
-            ...queryKey[0].path as any,
-            ...page.path as any
-        };
-    }
-    if (page.query) {
-        params.query = {
-            ...queryKey[0].query as any,
-            ...page.query as any
-        };
-    }
-    return params as unknown as typeof page;
-};
 
 export const listSkillsInfiniteQueryKey = (options?: Options<ListSkillsData>): QueryKey<Options<ListSkillsData>> => createQueryKey('listSkills', options, true);
 

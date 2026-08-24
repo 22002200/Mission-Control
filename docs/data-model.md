@@ -77,6 +77,7 @@ codes below. Every tenant-owned entity carries `organisationId`.
 | `name`, `description` | |
 | `status` | `MissionStatus` |
 | `closeReason` | `MissionCloseReason`; set only when `CLOSED` |
+| `closeComment` | optional note recorded when closing; the rejection comment lives on `MissionApproval` |
 | `missionLeadId` | owning user, role `MISSION_LEAD` |
 | `startsAt`, `endsAt` | mission timeline |
 | `createdBy`, `createdAt`, `updatedAt` | |
@@ -251,7 +252,15 @@ Computed on read. Storing them would create a second source of truth that drifts
   column is not, so comparing them directly is wrong in one direction or the other.
 - **Mission edits after approval (M5).** Reverting to `PLAN` is the reading that satisfies both
   "edit at any time" and "resubmit for approval". What happens to crew who already accepted is
-  not yet decided — currently they keep their assignments.
+  not yet decided — currently they keep their assignments. Implemented in
+  [04](features/04-mission-management.md).
+- **M11 cannot be satisfied until [07](features/07-crew-assignment.md).** Staffing counts reach
+  `mission` through a port it declares itself, `mission.api.StaffingReadModel`, and the only
+  implementation until then reports nothing as staffed. So `APPROVED` to `ACTIVE` is always
+  refused in a running application — which is moot, since nothing can reach `APPROVED` before
+  [05](features/05-mission-approval.md) either. One wrinkle worth recording: M11 read literally is
+  vacuously true for a mission with no requirements, so 04 refuses that case explicitly rather
+  than letting an empty mission launch. M12 is the real fix and it arrives with 05.
 - **Match run auditability.** Suggestions are transient, so there is no record of why a crew
   member was picked. Persisting match runs would give that, at the cost of another entity.
 - **Organisation settings.** The spec says Directors manage them but never says what they are, so

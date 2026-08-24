@@ -1,0 +1,283 @@
+# mission module - schema
+#
+# Mission, the crew requirements that staff it, and the skills each requirement
+# calls for.
+#
+# organisation_id, mission_lead_id, created_by and skill_id carry no foreign key:
+# organisation and app_user belong to identity and skill belongs to skill, and
+# architecture.md forbids foreign keys across module boundaries. mission ->
+# crew_requirement -> required_skill are all within this module, so those are
+# real constraints.
+databaseChangeLog:
+  - changeSet:
+      id: mission-001-create-mission
+      author: mission-control
+      comment: >-
+        status and close_reason hold the pinned integer codes from
+        docs/data-model.md. close_comment is where the optional note on
+        POST /close lands, because MissionApproval, which will own the rejection
+        comment, arrives with feature 05.
+      changes:
+        - createTable:
+            tableName: mission
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_mission
+                    nullable: false
+              - column:
+                  name: organisation_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: name
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: VARCHAR(2000)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: status
+                  type: SMALLINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: close_reason
+                  type: SMALLINT
+                  constraints:
+                    nullable: true
+              - column:
+                  name: close_comment
+                  type: VARCHAR(1000)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: mission_lead_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: starts_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: ends_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_by
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: mission-002-mission-checks
+      author: mission-control
+      comment: >-
+        M1 - a mission ends after it starts. M3 - status is one of the six pinned
+        codes. M4 - close_reason is present exactly when the mission is closed,
+        stated as an equivalence so neither direction can drift: a closed mission
+        without a reason and an open one carrying a stale reason are both
+        rejected. addCheckConstraint is a Liquibase Pro feature, so these are raw
+        SQL with explicit rollbacks.
+      changes:
+        - sql:
+            sql: ALTER TABLE mission ADD CONSTRAINT ck_mission_dates CHECK (ends_at > starts_at)
+        - sql:
+            sql: ALTER TABLE mission ADD CONSTRAINT ck_mission_status CHECK (status BETWEEN 1 AND 6)
+        - sql:
+            sql: ALTER TABLE mission ADD CONSTRAINT ck_mission_close_reason CHECK (close_reason IS NULL OR close_reason BETWEEN 1 AND 3)
+        - sql:
+            sql: ALTER TABLE mission ADD CONSTRAINT ck_mission_close_reason_present CHECK ((status = 6) = (close_reason IS NOT NULL))
+      rollback:
+        - sql:
+            sql: ALTER TABLE mission DROP CONSTRAINT ck_mission_dates
+        - sql:
+            sql: ALTER TABLE mission DROP CONSTRAINT ck_mission_status
+        - sql:
+            sql: ALTER TABLE mission DROP CONSTRAINT ck_mission_close_reason
+        - sql:
+            sql: ALTER TABLE mission DROP CONSTRAINT ck_mission_close_reason_present
+
+  - changeSet:
+      id: mission-003-mission-indexes
+      author: mission-control
+      comment: >-
+        Every list is filtered by organisation (T1) and ordered by starts_at, so
+        the composite covers the common read. The second index serves a mission
+        lead own list, which filters by owner within that organisation.
+      changes:
+        - createIndex:
+            tableName: mission
+            indexName: ix_mission_organisation_starts_at
+            columns:
+              - column:
+                  name: organisation_id
+              - column:
+                  name: starts_at
+        - createIndex:
+            tableName: mission
+            indexName: ix_mission_lead
+            columns:
+              - column:
+                  name: mission_lead_id
+
+  - changeSet:
+      id: mission-004-create-crew-requirement
+      author: mission-control
+      comment: >-
+        A staffing line, quantity-based rather than one row per seat - assignments
+        count against required_count, so widening a requirement is a number rather
+        than more rows. organisation_id is duplicated from the mission so that a
+        tenant-scoped read needs no join.
+      changes:
+        - createTable:
+            tableName: crew_requirement
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_crew_requirement
+                    nullable: false
+              - column:
+                  name: organisation_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: mission_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    # Same module, so a real foreign key is correct here.
+                    foreignKeyName: fk_crew_requirement_mission
+                    references: mission(id)
+                    deleteCascade: true
+              - column:
+                  name: title
+                  type: VARCHAR(200)
+                  constraints:
+                    nullable: false
+              - column:
+                  name: description
+                  type: VARCHAR(1000)
+                  constraints:
+                    nullable: true
+              - column:
+                  name: required_count
+                  type: INTEGER
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: mission-005-crew-requirement-checks
+      author: mission-control
+      comment: >-
+        Invariant M9 - a requirement asks for at least one person. A count of zero
+        would be a requirement that is vacuously satisfied, which is exactly the
+        hole M12 closes at the mission level.
+      changes:
+        - sql:
+            sql: ALTER TABLE crew_requirement ADD CONSTRAINT ck_crew_requirement_count CHECK (required_count >= 1)
+      rollback:
+        - sql:
+            sql: ALTER TABLE crew_requirement DROP CONSTRAINT ck_crew_requirement_count
+
+  - changeSet:
+      id: mission-006-crew-requirement-index
+      author: mission-control
+      comment: Reading a mission always reads its requirements, and a list page reads many at once.
+      changes:
+        - createIndex:
+            tableName: crew_requirement
+            indexName: ix_crew_requirement_mission
+            columns:
+              - column:
+                  name: mission_id
+
+  - changeSet:
+      id: mission-007-create-required-skill
+      author: mission-control
+      comment: >-
+        Composite primary key on (crew_requirement_id, skill_id) enforces the first
+        half of invariant M10 - a requirement cannot list the same skill twice - as
+        a constraint rather than a check in application code, so two concurrent
+        writes cannot both win. Mirrors the shape crew_skill uses for C2.
+      changes:
+        - createTable:
+            tableName: required_skill
+            columns:
+              - column:
+                  name: crew_requirement_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_required_skill_crew_requirement
+                    references: crew_requirement(id)
+                    deleteCascade: true
+              - column:
+                  name: skill_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: minimum_proficiency
+                  type: SMALLINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: mandatory
+                  type: BOOLEAN
+                  defaultValueBoolean: false
+                  constraints:
+                    nullable: false
+              - column:
+                  name: weight
+                  type: INTEGER
+                  defaultValueNumeric: 1
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: required_skill
+            columnNames: crew_requirement_id, skill_id
+            constraintName: pk_required_skill
+
+  - changeSet:
+      id: mission-008-required-skill-checks
+      author: mission-control
+      comment: >-
+        The second half of M10 - minimum_proficiency is 1..5, the same scale crew
+        rate themselves on, so the two are directly comparable. weight is bounded
+        as well: it is a ranking multiplier, and an unbounded one lets a single
+        skill drown out every other term in the match score.
+      changes:
+        - sql:
+            sql: ALTER TABLE required_skill ADD CONSTRAINT ck_required_skill_proficiency CHECK (minimum_proficiency BETWEEN 1 AND 5)
+        - sql:
+            sql: ALTER TABLE required_skill ADD CONSTRAINT ck_required_skill_weight CHECK (weight BETWEEN 1 AND 10)
+      rollback:
+        - sql:
+            sql: ALTER TABLE required_skill DROP CONSTRAINT ck_required_skill_proficiency
+        - sql:
+            sql: ALTER TABLE required_skill DROP CONSTRAINT ck_required_skill_weight

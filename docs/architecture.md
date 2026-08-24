@@ -21,7 +21,7 @@ com.missioncontrol
 ├── identity                       <- Organisation, User (first closed module)
 ├── skill                          <- Skill (read endpoints only so far)
 ├── crew                           <- planned: CrewMember, CrewSkill
-├── mission                        <- planned: Mission and its requirements
+├── mission                        <- Mission, CrewRequirement, RequiredSkill
 ├── assignment                     <- planned: Assignment
 └── matching                       <- planned: crew matching engine (owns no data)
 ```
@@ -299,26 +299,49 @@ speculation. The one rule that matters:
 backend's OpenAPI document. When the backend contract changes, regenerate; TypeScript will then
 point at every call site that needs updating.
 
-**Styling is deliberately mixed.** Hand-rolled `mc-` classes in `index.css` for the shell and the
-login form, MUI for the account menu. MUI earns its place where a component has real interaction
-behaviour to get right — the dropdown needs focus trapping, keyboard navigation, Escape and
-click-away — and not merely to make a box look like a box. `src/theme.ts` maps MUI onto the same
-palette so the two are indistinguishable on screen.
+**Styling is MUI throughout**, themed in `src/theme.ts`. It was deliberately mixed until feature
+04; the hand-rolled `mc-` classes are gone and `index.css` now holds only the palette custom
+properties and the page background, which has to be painted before React mounts. The two must be
+kept in step by hand — `theme.ts` says so at the point it duplicates them, because reading them
+back with `getComputedStyle` at module scope is fragile and untestable in jsdom.
+
+**Routing** is `react-router`, with every authenticated route nested under a single `RequireAuth`.
+That is one place to change if a screen ever becomes public, rather than a guard per page that can
+be forgotten.
+
+**Dates** cross the wire as UTC instants and are edited in local time. Every conversion goes
+through `src/lib/datetime.ts`; nothing else should call `dayjs.utc` directly, because a timeline
+that quietly shifts by a few hours is both easy to introduce and hard to notice.
 
 ## Open decisions
 
 Things deliberately not settled yet, recorded so they are not silently forgotten:
 
-- **Frontend routing.** Still no router. The app has two states — signed in or not — and
-  conditional rendering in `App.tsx` says that more plainly than a one-entry route table would.
-  Revisit when there is a second authenticated screen.
-- **How far MUI goes.** Currently one component. Migrating the login form and the shell would make
-  the frontend consistent at the cost of a rewrite that buys nothing functional today; leaving it
-  means two styling systems to keep in step. Decide when the next screen lands, not now.
 - **Per-device logout.** `tokensValidFrom` revokes all of a user's tokens at once. Anything finer
   needs a token table; see [`data-model.md`](data-model.md#open-questions).
 
 Settled since:
+
+- **Frontend routing** — there is a router. Missions were the second authenticated screen this
+  decision was waiting on, and a mission detail view has to be linkable, bookmarkable and survive
+  a refresh, which is precisely what conditional rendering cannot do. `react-router`, with every
+  authenticated route behind a single `RequireAuth` so adding a screen forces a decision about
+  whether it is public.
+- **How far MUI goes** — all the way. The `mc-` classes are gone and `index.css` is down to the
+  palette custom properties and the page background. Going from one authenticated screen to
+  several turned "two styling systems to keep in step" from a theoretical cost into a real one,
+  and the mission screens needed dialogs, tables, chips and date pickers that MUI already has.
+  `@mui/x-date-pickers` and `dayjs` came with that: mission timelines are required, user-entered,
+  validated datetimes, and the app had no picker, no parser and no UTC conversion.
+- **Where a consumer-side port lives** — `mission.api.StaffingReadModel` is declared by the module
+  that *needs* staffing counts, not the one that owns the data. `assignment` will implement it.
+  Declaring it in `assignment.api` instead would read more naturally but would make `mission`
+  depend on `assignment`, which is the cycle below. The interface belongs to the consumer; the
+  data still belongs to `assignment`.
+- **`api` packages need `@NamedInterface`** — a closed module exposes only its base package by
+  default, so `skill/api` and `identity/api` are invisible to other modules until annotated. An
+  `api` directory without it is a convention with nothing enforcing it, and every import of it
+  fails the build exactly as an import of `internal` does.
 
 - **Multi-tenancy** — every tenant-owned entity carries `organisationId`, filtered in application
   code. See [Data model](#data-model).

@@ -11,6 +11,7 @@
 - Use JUnit 5 for testing.
 - Use UTC time in database.
 - Store enums as integers in database and map to enums in code.
+- Avoid introducing N+1 database queries.
 
 ### Frontend
 
@@ -28,3 +29,4 @@
 - Keep documentation and specs concise.
 - Include tests that cover main workflows as well as important edge cases.
 - Use LF for line endings.
+- If not specified and required, ask about UI design.

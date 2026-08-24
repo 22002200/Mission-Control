@@ -1,5 +1,7 @@
 package com.missioncontrol.skill.internal;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
@@ -18,6 +20,15 @@ interface SkillRepository extends JpaRepository<SkillEntity, UUID> {
      * BR-3 a 404 and not a 403.
      */
     Optional<SkillEntity> findByIdAndOrganisationId(UUID id, UUID organisationId);
+
+    /**
+     * Bulk resolution for {@link SkillCatalogueLookup}.
+     *
+     * <p>Tenant-scoped in the query, like every other read here, so an id from another
+     * organisation simply does not come back - invariant T2. Duplicates in the argument collapse
+     * naturally; {@code in} does not repeat a row.
+     */
+    List<SkillEntity> findAllByIdInAndOrganisationId(Collection<UUID> ids, UUID organisationId);
 
     /**
      * The catalogue listing: FR-1 and FR-2 in one query.

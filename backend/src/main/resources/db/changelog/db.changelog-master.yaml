@@ -8,8 +8,15 @@
 # domain modules yet. Running Liquibase against an empty set still creates the
 # DATABASECHANGELOG and DATABASECHANGELOGLOCK tables, which is how we know the
 # migration path works before any real schema exists.
+#
+# `endsWithFilter` is not decoration. Without it `includeAll` hands every file it
+# finds to a parser, including the `.gitkeep` that holds `modules/` in git, and
+# Liquibase aborts the whole update with `UnknownChangelogFormatException` rather
+# than skipping it. That leaves the application unable to start against a fresh
+# database, and the message names only the file, not the reason.
 databaseChangeLog:
   - includeAll:
       path: db/changelog/modules/
       relativeToChangelogFile: false
       errorIfMissingOrEmpty: false
+      endsWithFilter: .yaml

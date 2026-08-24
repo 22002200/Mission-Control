@@ -1,14 +1,18 @@
 import { ThemeProvider } from '@mui/material/styles';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 import App from '../App';
 import { AuthContext, type AuthContextValue, type AuthStatus } from '../auth/AuthContext';
 import { theme } from '../theme';
 
-// SystemInfoPage issues a real query; it is not what these tests are about.
-vi.mock('../pages/SystemInfoPage', () => ({
-  default: () => <div>Backend status</div>,
+// The pages issue real queries; routing is what these tests are about.
+vi.mock('../pages/MissionsPage', () => ({
+  default: () => <div>Mission board</div>,
+}));
+vi.mock('../pages/MissionDetailPage', () => ({
+  default: () => <div>Mission detail</div>,
 }));
 
 const DIRECTOR = {
@@ -20,7 +24,7 @@ const DIRECTOR = {
   organisationName: 'Orbital Dynamics',
 };
 
-function renderApp(status: AuthStatus) {
+function renderApp(status: AuthStatus, initialEntry = '/missions') {
   const value: AuthContextValue = {
     status,
     user: status === 'authenticated' ? DIRECTOR : null,
@@ -33,7 +37,9 @@ function renderApp(status: AuthStatus) {
     <ThemeProvider theme={theme}>
       <QueryClientProvider client={queryClient}>
         <AuthContext.Provider value={value}>
-          <App />
+          <MemoryRouter initialEntries={[initialEntry]}>
+            <App />
+          </MemoryRouter>
         </AuthContext.Provider>
       </QueryClientProvider>
     </ThemeProvider>,
@@ -41,31 +47,40 @@ function renderApp(status: AuthStatus) {
 }
 
 describe('App', () => {
-  it('shows the sign-in form, and no account menu, when unauthenticated', () => {
+  it('sends an anonymous visitor to the sign-in form', () => {
     renderApp('anonymous');
 
     expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
-    expect(screen.queryByText('Backend status')).not.toBeInTheDocument();
+    expect(screen.queryByText('Mission board')).not.toBeInTheDocument();
     expect(screen.queryByRole('button', { name: /Vera Lindholm/ })).not.toBeInTheDocument();
   });
 
-  it('shows the application and the account menu when authenticated', () => {
+  it('shows the mission board and the account menu when authenticated', () => {
     renderApp('authenticated');
 
-    expect(screen.getByText('Backend status')).toBeInTheDocument();
+    expect(screen.getByText('Mission board')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Vera Lindholm/ })).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Sign in' })).not.toBeInTheDocument();
   });
 
-  it('reaches sign out through the account menu', async () => {
-    renderApp('authenticated');
+  it('routes straight to one mission when the URL names it', () => {
+    // The whole reason for adding a router: a mission has to be linkable.
+    renderApp('authenticated', '/missions/a4000000-0000-0000-0000-000000000001');
 
-    // Deliberately not on the page directly any more - it lives behind the dropdown.
-    expect(screen.queryByRole('menuitem', { name: /Sign out/ })).not.toBeInTheDocument();
+    expect(screen.getByText('Mission detail')).toBeInTheDocument();
+  });
 
-    fireEvent.click(screen.getByRole('button', { name: /Vera Lindholm/ }));
+  it('sends an unknown path to the mission board', () => {
+    renderApp('authenticated', '/nowhere');
 
-    expect(await screen.findByRole('menuitem', { name: /Sign out/ })).toBeInTheDocument();
+    expect(screen.getByText('Mission board')).toBeInTheDocument();
+  });
+
+  it('keeps a deep link behind the sign-in form when there is no session', () => {
+    renderApp('anonymous', '/missions/a4000000-0000-0000-0000-000000000001');
+
+    expect(screen.getByRole('button', { name: 'Sign in' })).toBeInTheDocument();
+    expect(screen.queryByText('Mission detail')).not.toBeInTheDocument();
   });
 
   it('shows neither screen while a stored session is being restored', () => {
@@ -74,7 +89,6 @@ describe('App', () => {
 
     expect(screen.getByText('Restoring session…')).toBeInTheDocument();
     expect(screen.queryByRole('button', { name: 'Sign in' })).not.toBeInTheDocument();
-    expect(screen.queryByText('Backend status')).not.toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: /Vera Lindholm/ })).not.toBeInTheDocument();
+    expect(screen.queryByText('Mission board')).not.toBeInTheDocument();
   });
 });

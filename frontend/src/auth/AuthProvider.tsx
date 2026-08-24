@@ -83,24 +83,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, [storedSession, endSession]);
 
-  const login = useCallback(
-    async (email: string, password: string) => {
-      const { data, error, response } = await loginRequest({ body: { email, password } });
+  const login = useCallback(async (email: string, password: string) => {
+    const { data, error, response } = await loginRequest({ body: { email, password } });
 
-      if (!data) {
-        throw new LoginFailedError(
-          messageFor(error as ProblemDetail | undefined, response?.status),
-          (error as ProblemDetail | undefined)?.type,
-        );
-      }
+    if (!data) {
+      throw new LoginFailedError(
+        messageFor(error as ProblemDetail | undefined, response?.status),
+        (error as ProblemDetail | undefined)?.type,
+      );
+    }
 
-      setAuthToken(data.token);
-      writeSession({ token: data.token, expiresAt: data.expiresAt });
-      setUser(data.user);
-      setStatus('authenticated');
-    },
-    [],
-  );
+    setAuthToken(data.token);
+    writeSession({ token: data.token, expiresAt: data.expiresAt });
+    setUser(data.user);
+    setStatus('authenticated');
+  }, []);
 
   const logout = useCallback(async () => {
     try {

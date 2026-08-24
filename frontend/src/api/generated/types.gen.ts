@@ -4,6 +4,16 @@ export type ClientOptions = {
     baseUrl: `${string}://${string}` | (string & {});
 };
 
+/**
+ * A new mission.
+ */
+export type CreateMissionRequest = {
+    name: string;
+    description?: string;
+    startsAt: string;
+    endsAt: string;
+};
+
 export type ProblemDetail = {
     type?: string;
     title?: string | null;
@@ -13,6 +23,130 @@ export type ProblemDetail = {
     properties?: {
         [key: string]: unknown;
     } | null;
+};
+
+/**
+ * A staffing line on a mission.
+ */
+export type CrewRequirementResponse = {
+    id: string;
+    title: string;
+    description?: string;
+    /**
+     * How many crew this line calls for.
+     */
+    requiredCount: number;
+    /**
+     * How many have accepted so far. Derived from assignments, never stored.
+     */
+    acceptedCount: number;
+    skills: Array<RequiredSkillResponse>;
+};
+
+/**
+ * A mission with its crew requirements.
+ */
+export type MissionResponse = {
+    id: string;
+    name: string;
+    description?: string;
+    status: 'PLAN' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'ACTIVE' | 'CLOSED';
+    /**
+     * Set only once the mission is CLOSED.
+     */
+    closeReason?: 'COMPLETED' | 'ABORTED' | 'REJECTED';
+    /**
+     * The note recorded when the mission was closed, if any.
+     */
+    closeComment?: string;
+    /**
+     * UTC instant the mission begins.
+     */
+    startsAt: string;
+    /**
+     * UTC instant the mission ends.
+     */
+    endsAt: string;
+    missionLead: UserRef;
+    /**
+     * True when every requirement has as many accepted assignments as it asks for. A mission with no requirements is not fully staffed.
+     */
+    fullyStaffed: boolean;
+    requirements: Array<CrewRequirementResponse>;
+};
+
+/**
+ * A skill a crew requirement calls for.
+ */
+export type RequiredSkillResponse = {
+    skillId: string;
+    skillName: string;
+    /**
+     * Lowest acceptable proficiency, on the same 1-5 scale crew are rated on.
+     */
+    minimumProficiency: number;
+    /**
+     * True filters candidates out; false only influences ranking.
+     */
+    mandatory: boolean;
+    /**
+     * Relative importance when ranking candidates.
+     */
+    weight: number;
+};
+
+/**
+ * A user referenced from a mission.
+ */
+export type UserRef = {
+    id: string;
+    fullName: string;
+};
+
+/**
+ * A staffing line, with the skills it calls for.
+ */
+export type CrewRequirementRequest = {
+    title: string;
+    description?: string;
+    /**
+     * How many crew this line calls for.
+     */
+    requiredCount: number;
+    /**
+     * May be empty, though a requirement with no skills matches anyone.
+     */
+    skills?: Array<RequiredSkillRequest>;
+};
+
+/**
+ * A skill a crew requirement calls for.
+ */
+export type RequiredSkillRequest = {
+    /**
+     * Must name an active skill in the caller's own catalogue.
+     */
+    skillId: string;
+    minimumProficiency: number;
+    /**
+     * True makes this a hard filter as well as a scored term.
+     */
+    mandatory: boolean;
+    /**
+     * Ranking weight. Defaults to 1.
+     */
+    weight?: number;
+};
+
+/**
+ * Optional detail for closing a mission.
+ */
+export type CloseMissionRequest = {
+    /**
+     * Defaults to COMPLETED from ACTIVE and ABORTED from anywhere else.
+     */
+    closeReason?: 'COMPLETED' | 'ABORTED' | 'REJECTED';
+    comment?: string;
 };
 
 /**
@@ -42,6 +176,19 @@ export type LoginResponse = {
     token: string;
     expiresAt: string;
     user: CurrentUserResponse;
+};
+
+/**
+ * Fields to change on a mission. Omitted fields are left as they are.
+ */
+export type UpdateMissionRequest = {
+    name?: string;
+    /**
+     * An empty string clears the description.
+     */
+    description?: string;
+    startsAt?: string;
+    endsAt?: string;
 };
 
 /**
@@ -84,6 +231,255 @@ export type SkillResponse = {
     description?: string;
     active: boolean;
 };
+
+/**
+ * One page of missions.
+ */
+export type MissionPage = {
+    content: Array<MissionSummaryResponse>;
+    /**
+     * Zero-based page index.
+     */
+    page: number;
+    /**
+     * Requested page size.
+     */
+    size: number;
+    /**
+     * Total matching missions across every page.
+     */
+    totalElements: number;
+    totalPages: number;
+};
+
+/**
+ * A mission as it appears in a list.
+ */
+export type MissionSummaryResponse = {
+    id: string;
+    name: string;
+    status: 'PLAN' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'ACTIVE' | 'CLOSED';
+    /**
+     * Set only once the mission is CLOSED.
+     */
+    closeReason?: 'COMPLETED' | 'ABORTED' | 'REJECTED';
+    startsAt: string;
+    endsAt: string;
+    missionLead: UserRef;
+    /**
+     * Accepted assignments across every requirement.
+     */
+    acceptedCount: number;
+    /**
+     * Crew called for across every requirement.
+     */
+    requiredCount: number;
+    fullyStaffed: boolean;
+};
+
+export type ListMissionsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Repeatable. Omitting it returns every status.
+         */
+        status?: Array<'PLAN' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'ACTIVE' | 'CLOSED'>;
+        /**
+         * Case-insensitive substring of the mission name.
+         */
+        search?: string;
+        /**
+         * Zero-based page index.
+         */
+        page?: number;
+        /**
+         * Entries per page.
+         */
+        size?: number;
+    };
+    url: '/api/missions';
+};
+
+export type ListMissionsErrors = {
+    /**
+     * A parameter is out of range
+     */
+    400: ProblemDetail;
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+};
+
+export type ListMissionsError = ListMissionsErrors[keyof ListMissionsErrors];
+
+export type ListMissionsResponses = {
+    /**
+     * One page of missions
+     */
+    200: MissionPage;
+};
+
+export type ListMissionsResponse = ListMissionsResponses[keyof ListMissionsResponses];
+
+export type CreateMissionData = {
+    body: CreateMissionRequest;
+    path?: never;
+    query?: never;
+    url: '/api/missions';
+};
+
+export type CreateMissionErrors = {
+    /**
+     * A field is invalid, or endsAt is not after startsAt
+     */
+    400: ProblemDetail;
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+    /**
+     * The caller is not a mission lead
+     */
+    403: ProblemDetail;
+};
+
+export type CreateMissionError = CreateMissionErrors[keyof CreateMissionErrors];
+
+export type CreateMissionResponses = {
+    /**
+     * The new mission
+     */
+    201: MissionResponse;
+};
+
+export type CreateMissionResponse = CreateMissionResponses[keyof CreateMissionResponses];
+
+export type AddRequirementData = {
+    body: CrewRequirementRequest;
+    path: {
+        missionId: string;
+    };
+    query?: never;
+    url: '/api/missions/{missionId}/requirements';
+};
+
+export type AddRequirementErrors = {
+    /**
+     * A field is invalid
+     */
+    400: ProblemDetail;
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+    /**
+     * The caller does not own this mission
+     */
+    403: ProblemDetail;
+    /**
+     * No such mission the caller can see
+     */
+    404: ProblemDetail;
+    /**
+     * The mission has left PLAN, a skill is listed twice, or a skill is unknown or retired
+     */
+    409: ProblemDetail;
+};
+
+export type AddRequirementError = AddRequirementErrors[keyof AddRequirementErrors];
+
+export type AddRequirementResponses = {
+    /**
+     * The new requirement
+     */
+    201: CrewRequirementResponse;
+};
+
+export type AddRequirementResponse = AddRequirementResponses[keyof AddRequirementResponses];
+
+export type StartMissionData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/missions/{id}/start';
+};
+
+export type StartMissionErrors = {
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+    /**
+     * The caller is neither the owner nor a director
+     */
+    403: ProblemDetail;
+    /**
+     * No such mission the caller can see
+     */
+    404: ProblemDetail;
+    /**
+     * Not APPROVED, or not fully staffed
+     */
+    409: ProblemDetail;
+};
+
+export type StartMissionError = StartMissionErrors[keyof StartMissionErrors];
+
+export type StartMissionResponses = {
+    /**
+     * The mission, now ACTIVE
+     */
+    200: MissionResponse;
+};
+
+export type StartMissionResponse = StartMissionResponses[keyof StartMissionResponses];
+
+export type CloseMissionData = {
+    body?: CloseMissionRequest;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/missions/{id}/close';
+};
+
+export type CloseMissionErrors = {
+    /**
+     * The reason contradicts the mission history
+     */
+    400: ProblemDetail;
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+    /**
+     * The caller is neither the owner nor a director
+     */
+    403: ProblemDetail;
+    /**
+     * No such mission the caller can see
+     */
+    404: ProblemDetail;
+    /**
+     * The mission is already closed
+     */
+    409: ProblemDetail;
+};
+
+export type CloseMissionError = CloseMissionErrors[keyof CloseMissionErrors];
+
+export type CloseMissionResponses = {
+    /**
+     * The mission, now CLOSED
+     */
+    200: MissionResponse;
+};
+
+export type CloseMissionResponse = CloseMissionResponses[keyof CloseMissionResponses];
 
 export type LogoutData = {
     body?: never;
@@ -142,6 +538,164 @@ export type LoginResponses = {
 };
 
 export type LoginResponse2 = LoginResponses[keyof LoginResponses];
+
+export type DeleteRequirementData = {
+    body?: never;
+    path: {
+        missionId: string;
+        requirementId: string;
+    };
+    query?: never;
+    url: '/api/missions/{missionId}/requirements/{requirementId}';
+};
+
+export type DeleteRequirementErrors = {
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+    /**
+     * The caller does not own this mission
+     */
+    403: ProblemDetail;
+    /**
+     * No such mission, or no such requirement on it
+     */
+    404: ProblemDetail;
+    /**
+     * The mission has left PLAN
+     */
+    409: ProblemDetail;
+};
+
+export type DeleteRequirementError = DeleteRequirementErrors[keyof DeleteRequirementErrors];
+
+export type DeleteRequirementResponses = {
+    /**
+     * Removed
+     */
+    204: void;
+};
+
+export type DeleteRequirementResponse = DeleteRequirementResponses[keyof DeleteRequirementResponses];
+
+export type UpdateRequirementData = {
+    body: CrewRequirementRequest;
+    path: {
+        missionId: string;
+        requirementId: string;
+    };
+    query?: never;
+    url: '/api/missions/{missionId}/requirements/{requirementId}';
+};
+
+export type UpdateRequirementErrors = {
+    /**
+     * A field is invalid
+     */
+    400: ProblemDetail;
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+    /**
+     * The caller does not own this mission
+     */
+    403: ProblemDetail;
+    /**
+     * No such mission, or no such requirement on it
+     */
+    404: ProblemDetail;
+    /**
+     * The mission has left PLAN, a skill is listed twice, or a skill is unknown or retired
+     */
+    409: ProblemDetail;
+};
+
+export type UpdateRequirementError = UpdateRequirementErrors[keyof UpdateRequirementErrors];
+
+export type UpdateRequirementResponses = {
+    /**
+     * The updated requirement
+     */
+    200: CrewRequirementResponse;
+};
+
+export type UpdateRequirementResponse = UpdateRequirementResponses[keyof UpdateRequirementResponses];
+
+export type GetMissionData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/missions/{id}';
+};
+
+export type GetMissionErrors = {
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+    /**
+     * No such mission the caller can see
+     */
+    404: ProblemDetail;
+};
+
+export type GetMissionError = GetMissionErrors[keyof GetMissionErrors];
+
+export type GetMissionResponses = {
+    /**
+     * The mission
+     */
+    200: MissionResponse;
+};
+
+export type GetMissionResponse = GetMissionResponses[keyof GetMissionResponses];
+
+export type UpdateMissionData = {
+    body: UpdateMissionRequest;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/missions/{id}';
+};
+
+export type UpdateMissionErrors = {
+    /**
+     * A field is invalid, or endsAt is not after startsAt
+     */
+    400: ProblemDetail;
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+    /**
+     * The caller is neither the owner nor a director
+     */
+    403: ProblemDetail;
+    /**
+     * No such mission the caller can see
+     */
+    404: ProblemDetail;
+    /**
+     * The mission is closed
+     */
+    409: ProblemDetail;
+};
+
+export type UpdateMissionError = UpdateMissionErrors[keyof UpdateMissionErrors];
+
+export type UpdateMissionResponses = {
+    /**
+     * The mission, possibly back in PLAN
+     */
+    200: MissionResponse;
+};
+
+export type UpdateMissionResponse = UpdateMissionResponses[keyof UpdateMissionResponses];
 
 export type GetSystemInfoData = {
     body?: never;

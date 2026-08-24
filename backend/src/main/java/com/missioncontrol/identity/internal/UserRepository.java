@@ -1,5 +1,8 @@
 package com.missioncontrol.identity.internal;
 
+import com.missioncontrol.identity.api.UserSummary;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -30,4 +33,16 @@ interface UserRepository extends JpaRepository<UserEntity, UUID> {
     @Query("select new com.missioncontrol.identity.internal.TokenValidity(u.tokensValidFrom, u.status) "
             + "from UserEntity u where u.id = :id")
     Optional<TokenValidity> findTokenValidity(@Param("id") UUID id);
+
+    /**
+     * Names for a set of users in one organisation, for {@link UserDirectoryLookup}.
+     *
+     * <p>A constructor expression straight into the published record, so no entity is loaded and
+     * nothing can accidentally escape the module through a getter. The organisation is compared
+     * against the association's id, which needs no join - the foreign key is already on this row.
+     */
+    @Query("select new com.missioncontrol.identity.api.UserSummary(u.id, u.fullName) "
+            + "from UserEntity u where u.id in :ids and u.organisation.id = :organisationId")
+    List<UserSummary> findSummaries(@Param("ids") Collection<UUID> ids,
+                                    @Param("organisationId") UUID organisationId);
 }

@@ -3,10 +3,13 @@
 A web application for planning space missions and assigning crew to them, built as a
 **modular monolith**.
 
-This is currently a *walking skeleton*: the structure, build, and feedback loops are in place
-and proven end to end, but there are no domain modules yet. See
-[`docs/architecture.md`](docs/architecture.md) for the module rules and the checklist for
-adding the first one.
+Three domain modules are built: `identity` (logging in), `skill` (the org-scoped catalogue, reads
+only) and `mission` (planning missions and the crew they call for). Approval, matching, crew
+assignment and the dashboards are specified but not yet built — see
+[`docs/features/`](docs/features/README.md) for the build order.
+
+See [`docs/architecture.md`](docs/architecture.md) for the module rules and the checklist for
+adding the next one.
 
 ## Stack
 
@@ -142,13 +145,63 @@ Two things worth knowing:
 - **There is no delete.** Skills are retired with an `active` flag so that crew ratings and mission
   requirements already referencing them stay readable.
 
+## Missions
+
+Mission Leads plan missions and describe the crew they need; Directors oversee every mission in
+their organisation. Approval, matching and crew assignment come later - see
+[`docs/features/04-mission-management.md`](docs/features/04-mission-management.md).
+
+| Method | Path | Role | Purpose |
+| --- | --- | --- | --- |
+| GET | `/api/missions` | any | One page, scoped by role |
+| POST | `/api/missions` | MISSION_LEAD | Create, in `PLAN` |
+| GET | `/api/missions/{id}` | any with visibility | One mission with its requirements |
+| PATCH | `/api/missions/{id}` | owner or DIRECTOR | Edit name, description or dates |
+| POST | `/api/missions/{id}/start` | owner or DIRECTOR | `APPROVED` to `ACTIVE` |
+| POST | `/api/missions/{id}/close` | owner or DIRECTOR | Close, which is also how a mission is aborted |
+| POST | `/api/missions/{id}/requirements` | owner | Add a staffing line |
+| PATCH | `/api/missions/{id}/requirements/{reqId}` | owner | Replace one, skills included |
+| DELETE | `/api/missions/{id}/requirements/{reqId}` | owner | Remove one |
+
+`GET /api/missions` takes `status` (**repeatable** - `?status=PLAN&status=APPROVED`), `search`,
+`page` and `size` (default 20, maximum 100). It is sorted by start date.
+
+```bash
+curl -s "localhost:8080/api/missions?status=ACTIVE&status=CLOSED" -H "Authorization: Bearer $TOKEN"
+```
+
+Four things worth knowing:
+
+- **The list is scoped by role.** A Mission Lead sees the missions they own, a Director sees every
+  mission in the organisation, and a Crew Member sees only the ones they hold an assignment on.
+- **Anything you cannot see is a 404, including within your own organisation.** A second mission
+  lead asking for someone else's mission gets the same answer as another tenant. 403 is reserved
+  for a caller who genuinely can see the mission but may not change it.
+- **Editing an `APPROVED` or `ACTIVE` mission sends it back to `PLAN`.** The approval described a
+  plan that no longer exists, so it has to be resubmitted. The UI warns before you save.
+- **`POST /start` always fails right now**, and that is correct rather than broken. Staffing counts
+  come from the assignment module, which does not exist until feature 07, so no mission reads as
+  crewed. It is moot in any case: nothing can reach `APPROVED` before feature 05.
+
+### The mission board
+
+The signed-in application is a board at `/missions`, split into three lifecycle sections - **Draft**
+(`PLAN`, `PENDING_APPROVAL`, `APPROVED`, `REJECTED`), **Active**, and **Completed** - each a
+responsive grid of cards that pages independently. Each section queries only its own statuses; the
+alternative, fetching one page and bucketing it client-side, would silently drop any mission that
+fell on another page.
+
+Times are entered and displayed in your own timezone and stored as UTC. Everything goes through
+`frontend/src/lib/datetime.ts`.
+
 ### A note on styling
 
-Two systems coexist, on purpose. The shell and the login form use the hand-rolled `mc-` classes in
-`src/index.css`; the account menu uses MUI, themed in `src/theme.ts` to the same six colours. MUI
-was introduced for the dropdown specifically - `Menu` already handles focus trapping, keyboard
-navigation, Escape and click-away, which is most of what a correct dropdown is. There is no
-`CssBaseline`, because it would reset the body styling `index.css` owns.
+MUI throughout, themed in `src/theme.ts`. The hand-rolled `mc-` classes that used to dress the
+shell and the login form are gone: they were a reasonable trade while there was one authenticated
+screen, and stopped being one at several. `src/index.css` is now just the palette custom properties
+and the page background, which has to be painted before React mounts or the first frame is a white
+flash on a dark application. The colours are duplicated between the two files deliberately - see
+the comment in `theme.ts`.
 
 ### Why `--watch`
 
@@ -289,9 +342,10 @@ These are deliberate, not oversights:
   signing out on one device signs out everywhere.
 - **No user management.** Accounts exist only because feature 01 seeds them; there is no
   registration, invite or password-reset flow.
-- **Cross-tenant 404s are enforceable but not yet demonstrable.** The rule that a resource in
-  another organisation is reported as 404 rather than 403 is what `CurrentUser` exists to make
-  possible, but no endpoint takes a resource id yet. Feature 03 is the first that can show it.
-- **The remaining domain modules are missing** — no Mission, Crew, Skill or Assignment.
+- **Missions cannot be approved, crewed or started.** Feature 04 builds planning, editing and
+  closing; approval is 05, matching 06 and crew assignment 07. Until then every mission reads as
+  unstaffed and `POST /start` is refused.
+- **The remaining domain modules are missing** — no Crew, Assignment or Matching module, though
+  the crew tables are seeded ready for them.
 - **Demo secrets.** `JWT_SECRET` and the database password in `.env.example` are development
   values. Nothing here is a deployment manifest.

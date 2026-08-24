@@ -11,6 +11,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Typography from '@mui/material/Typography';
 import { useState } from 'react';
 import { useAuth } from '../auth/useAuth';
+import { formatRole, initials } from '../lib/missionLabels';
 
 const MENU_ID = 'account-menu';
 const BUTTON_ID = 'account-menu-button';
@@ -18,8 +19,8 @@ const BUTTON_ID = 'account-menu-button';
 /**
  * Who you are signed in as, and the way out.
  *
- * Pinned to the top-right corner of the viewport rather than sitting in the page flow, so it stays
- * put as the content below it grows.
+ * Lives in the application bar now rather than pinned to the viewport corner, so it cannot end up
+ * floating over the content it used to sit above.
  *
  * Built on MUI's `Menu` rather than a hand-rolled popover: it already handles focus trapping,
  * arrow-key navigation, Escape, click-away and returning focus to the trigger. Those are the parts
@@ -43,14 +44,7 @@ export default function AccountMenu() {
   }
 
   return (
-    <Box
-      sx={{
-        position: 'fixed',
-        top: 16,
-        right: 24,
-        zIndex: (muiTheme) => muiTheme.zIndex.appBar,
-      }}
-    >
+    <Box>
       <Button
         id={BUTTON_ID}
         aria-controls={open ? MENU_ID : undefined}
@@ -60,14 +54,20 @@ export default function AccountMenu() {
         disabled={signingOut}
         color="inherit"
         startIcon={
-          <Avatar sx={{ width: 28, height: 28, fontSize: 13, bgcolor: 'primary.main',
-                        color: 'background.default' }}>
+          <Avatar
+            sx={{
+              width: 28,
+              height: 28,
+              fontSize: 13,
+              bgcolor: 'primary.main',
+              color: 'background.default',
+            }}
+          >
             {initials(user.fullName)}
           </Avatar>
         }
         endIcon={<KeyboardArrowDownIcon />}
         sx={{
-          textTransform: 'none',
           borderRadius: 999,
           pl: 0.75,
           pr: 1.5,
@@ -91,7 +91,7 @@ export default function AccountMenu() {
         onClose={() => setAnchorEl(null)}
         slotProps={{
           list: { 'aria-labelledby': BUTTON_ID, dense: true },
-          paper: { sx: { minWidth: 240, mt: 1 } },
+          paper: { sx: { minWidth: 240, mt: 1, border: 1, borderColor: 'divider' } },
         }}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
         transformOrigin={{ vertical: 'top', horizontal: 'right' }}
@@ -120,21 +120,4 @@ export default function AccountMenu() {
       </Menu>
     </Box>
   );
-}
-
-/** `MISSION_LEAD` reads badly in a UI; the wire format is not the display format. */
-function formatRole(role: string): string {
-  return role
-    .toLowerCase()
-    .split('_')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ');
-}
-
-function initials(fullName: string): string {
-  const parts = fullName.trim().split(/\s+/).filter(Boolean);
-  if (parts.length === 0) return '?';
-  const first = parts[0]!.charAt(0);
-  const last = parts.length > 1 ? parts[parts.length - 1]!.charAt(0) : '';
-  return (first + last).toUpperCase();
 }

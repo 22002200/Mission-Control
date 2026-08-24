@@ -1,0 +1,137 @@
+# mission module - seed data
+#
+# Enough missions to fill all three sections of the mission board on first login,
+# spread across every status so each one can be seen without having to build it.
+# Split between both mission leads in each organisation, so a director's view is
+# visibly wider than either lead's - which is the whole of FR-2 made demonstrable.
+#
+# Dates are anchored to the same 2026-01-05 09:00:00+00 the rest of the seed uses,
+# never now(). A seed whose meaning drifts with the wall clock cannot be asserted
+# against (feature 01, NFR-5).
+#
+# No assignments are seeded, because that module does not exist yet. Every mission
+# therefore reads as unstaffed, and the two ACTIVE ones were put there directly
+# rather than started through the API - which is honest: with nobody able to
+# accept a place, POST /start cannot succeed. It also leaves feature 06's worked
+# example untouched, since that depends on crew load and there is none.
+databaseChangeLog:
+  - changeSet:
+      id: mission-seed-001-missions
+      author: mission-control
+      contextFilter: seed
+      comment: >-
+        7 missions for Orbital Dynamics and 5 for Helios, covering PLAN,
+        PENDING_APPROVAL, APPROVED, REJECTED, ACTIVE and CLOSED with both
+        COMPLETED and ABORTED reasons.
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO mission (id, organisation_id, name, description, status, close_reason, close_comment, mission_lead_id, starts_at, ends_at, created_by, created_at, updated_at) VALUES
+                -- Orbital Dynamics, led by Marcus Reyes (a1..0002)
+                ('a4000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'Aurora Survey',      'Mapping auroral activity from a low polar orbit.',                1, NULL, NULL,                                          'a1000000-0000-0000-0000-000000000002', '2026-09-01 08:00:00+00', '2026-09-14 17:00:00+00', 'a1000000-0000-0000-0000-000000000002', '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('a4000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'Tethys Relay',       'Placing a communications relay in a stable halo orbit.',          2, NULL, NULL,                                          'a1000000-0000-0000-0000-000000000002', '2026-10-05 06:00:00+00', '2026-10-19 18:00:00+00', 'a1000000-0000-0000-0000-000000000002', '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('a4000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'Vesta Flyby',        'Close approach and imaging pass of asteroid Vesta.',              5, NULL, NULL,                                          'a1000000-0000-0000-0000-000000000002', '2026-08-12 04:00:00+00', '2026-11-30 20:00:00+00', 'a1000000-0000-0000-0000-000000000002', '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('a4000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001', 'Io Survey',          'Volcanic monitoring pass. Stood down before launch.',             6, 2,    'Launch window missed; rescheduling next year.', 'a1000000-0000-0000-0000-000000000002', '2026-03-02 09:00:00+00', '2026-04-18 15:00:00+00', 'a1000000-0000-0000-0000-000000000002', '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                -- Orbital Dynamics, led by Priya Raman (a1..0003)
+                ('a4000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000001', 'Helix Resupply',     'Pressurised cargo run to the orbital platform.',                  3, NULL, NULL,                                          'a1000000-0000-0000-0000-000000000003', '2026-09-20 05:30:00+00', '2026-10-02 12:00:00+00', 'a1000000-0000-0000-0000-000000000003', '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('a4000000-0000-0000-0000-000000000006', 'a0000000-0000-0000-0000-000000000001', 'Rhea Descent',       'Surface descent and sample return. Returned for revision.',       4, NULL, NULL,                                          'a1000000-0000-0000-0000-000000000003', '2026-11-08 07:00:00+00', '2026-12-20 16:00:00+00', 'a1000000-0000-0000-0000-000000000003', '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('a4000000-0000-0000-0000-000000000007', 'a0000000-0000-0000-0000-000000000001', 'Kuiper Probe',       'Deep-field probe deployment and checkout.',                       6, 1,    NULL,                                          'a1000000-0000-0000-0000-000000000003', '2026-03-01 10:00:00+00', '2026-06-20 14:00:00+00', 'a1000000-0000-0000-0000-000000000003', '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                -- Helios Aerospace, led by Sofia Mendes (b1..0002)
+                ('b4000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'Solaris Array Lift', 'Deploying the second photovoltaic wing.',                         1, NULL, NULL,                                          'b1000000-0000-0000-0000-000000000002', '2026-09-08 07:00:00+00', '2026-09-22 19:00:00+00', 'b1000000-0000-0000-0000-000000000002', '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('b4000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000001', 'Perihelion Watch',   'Close solar pass with continuous coronal imaging.',               3, NULL, NULL,                                          'b1000000-0000-0000-0000-000000000002', '2026-10-14 03:00:00+00', '2026-11-11 21:00:00+00', 'b1000000-0000-0000-0000-000000000002', '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                -- Helios Aerospace, led by Daniel Okafor (b1..0003)
+                ('b4000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000001', 'Meridian Uplink',    'Ground-station handover trials for the new uplink.',              2, NULL, NULL,                                          'b1000000-0000-0000-0000-000000000003', '2026-09-29 08:00:00+00', '2026-10-13 17:30:00+00', 'b1000000-0000-0000-0000-000000000003', '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('b4000000-0000-0000-0000-000000000004', 'b0000000-0000-0000-0000-000000000001', 'Zenith Station Run', 'Crew rotation and consumables transfer.',                         5, NULL, NULL,                                          'b1000000-0000-0000-0000-000000000003', '2026-07-30 05:00:00+00', '2026-12-05 11:00:00+00', 'b1000000-0000-0000-0000-000000000003', '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('b4000000-0000-0000-0000-000000000005', 'b0000000-0000-0000-0000-000000000001', 'Halcyon Trial',      'Propulsion shakedown. Completed nominally.',                      6, 1,    NULL,                                          'b1000000-0000-0000-0000-000000000003', '2026-02-10 09:00:00+00', '2026-05-01 13:00:00+00', 'b1000000-0000-0000-0000-000000000003', '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00');
+      rollback:
+        - sql:
+            sql: DELETE FROM mission WHERE organisation_id IN ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001');
+
+  - changeSet:
+      id: mission-seed-002-crew-requirements
+      author: mission-control
+      contextFilter: seed
+      comment: >-
+        Staffing lines for the missions that have left the drawing board. The two
+        CLOSED missions get none: they are history, and a closed mission with
+        unfilled requirements would only be confusing.
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO crew_requirement (id, organisation_id, mission_id, title, description, required_count) VALUES
+                -- Aurora Survey (PLAN)
+                ('a5000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'a4000000-0000-0000-0000-000000000001', 'Flight Engineer',   'Systems monitoring and in-flight repair.',        2),
+                ('a5000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'a4000000-0000-0000-0000-000000000001', 'Science Officer',   'Instrument operation and data capture.',          2),
+                -- Tethys Relay (PENDING_APPROVAL)
+                ('a5000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'a4000000-0000-0000-0000-000000000002', 'Comms Specialist',  'Relay commissioning and link budget checks.',     2),
+                ('a5000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001', 'a4000000-0000-0000-0000-000000000002', 'EVA Lead',          'External installation and inspection.',           1),
+                -- Vesta Flyby (ACTIVE)
+                ('a5000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000001', 'a4000000-0000-0000-0000-000000000003', 'Navigator',         'Trajectory refinement through the approach.',     1),
+                ('a5000000-0000-0000-0000-000000000006', 'a0000000-0000-0000-0000-000000000001', 'a4000000-0000-0000-0000-000000000003', 'Imaging Lead',      'Optical payload operation during the flyby.',     2),
+                -- Helix Resupply (APPROVED)
+                ('a5000000-0000-0000-0000-000000000007', 'a0000000-0000-0000-0000-000000000001', 'a4000000-0000-0000-0000-000000000005', 'Cargo Master',      'Manifest handling and transfer sequencing.',      1),
+                ('a5000000-0000-0000-0000-000000000008', 'a0000000-0000-0000-0000-000000000001', 'a4000000-0000-0000-0000-000000000005', 'Docking Pilot',     'Rendezvous and berthing.',                        2),
+                -- Rhea Descent (REJECTED)
+                ('a5000000-0000-0000-0000-000000000009', 'a0000000-0000-0000-0000-000000000001', 'a4000000-0000-0000-0000-000000000006', 'Descent Commander', 'Powered descent and surface operations.',         1),
+                -- Solaris Array Lift (PLAN)
+                ('b5000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000001', 'Array Technician',  'Wing deployment and fault isolation.',            2),
+                -- Perihelion Watch (APPROVED)
+                ('b5000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000002', 'Thermal Engineer',  'Shield monitoring through the close pass.',       1),
+                ('b5000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000002', 'Science Officer',   'Coronal imaging and data reduction.',             2),
+                -- Meridian Uplink (PENDING_APPROVAL)
+                ('b5000000-0000-0000-0000-000000000004', 'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000003', 'Comms Specialist',  'Handover rehearsal and link verification.',       1),
+                -- Zenith Station Run (ACTIVE)
+                ('b5000000-0000-0000-0000-000000000005', 'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000004', 'Flight Engineer',   'Station systems handover.',                       2);
+      rollback:
+        - sql:
+            sql: DELETE FROM crew_requirement WHERE organisation_id IN ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001');
+
+  - changeSet:
+      id: mission-seed-003-required-skills
+      author: mission-control
+      contextFilter: seed
+      comment: >-
+        Each requirement names one or two catalogue skills, always from its own
+        organisation. Mandatory lines are the hard filter feature 06 will apply;
+        the preferred ones only shift the ranking.
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO required_skill (crew_requirement_id, skill_id, minimum_proficiency, mandatory, weight) VALUES
+                -- Aurora Survey / Flight Engineer
+                ('a5000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000003', 3, TRUE,  2),
+                ('a5000000-0000-0000-0000-000000000001', 'a2000000-0000-0000-0000-000000000007', 2, FALSE, 1),
+                -- Aurora Survey / Science Officer
+                ('a5000000-0000-0000-0000-000000000002', 'a2000000-0000-0000-0000-000000000005', 3, TRUE,  2),
+                -- Tethys Relay / Comms Specialist
+                ('a5000000-0000-0000-0000-000000000003', 'a2000000-0000-0000-0000-000000000008', 4, TRUE,  3),
+                -- Tethys Relay / EVA Lead
+                ('a5000000-0000-0000-0000-000000000004', 'a2000000-0000-0000-0000-000000000001', 4, TRUE,  3),
+                ('a5000000-0000-0000-0000-000000000004', 'a2000000-0000-0000-0000-000000000002', 2, FALSE, 1),
+                -- Vesta Flyby / Navigator
+                ('a5000000-0000-0000-0000-000000000005', 'a2000000-0000-0000-0000-000000000004', 4, TRUE,  2),
+                -- Vesta Flyby / Imaging Lead
+                ('a5000000-0000-0000-0000-000000000006', 'a2000000-0000-0000-0000-000000000005', 2, FALSE, 1),
+                ('a5000000-0000-0000-0000-000000000006', 'a2000000-0000-0000-0000-000000000008', 3, TRUE,  2),
+                -- Helix Resupply / Cargo Master
+                ('a5000000-0000-0000-0000-000000000007', 'a2000000-0000-0000-0000-000000000002', 3, TRUE,  2),
+                -- Helix Resupply / Docking Pilot
+                ('a5000000-0000-0000-0000-000000000008', 'a2000000-0000-0000-0000-000000000004', 4, TRUE,  3),
+                -- Rhea Descent / Descent Commander
+                ('a5000000-0000-0000-0000-000000000009', 'a2000000-0000-0000-0000-000000000004', 5, TRUE,  3),
+                ('a5000000-0000-0000-0000-000000000009', 'a2000000-0000-0000-0000-000000000006', 2, FALSE, 1),
+                -- Solaris Array Lift / Array Technician
+                ('b5000000-0000-0000-0000-000000000001', 'b2000000-0000-0000-0000-000000000005', 3, TRUE,  2),
+                ('b5000000-0000-0000-0000-000000000001', 'b2000000-0000-0000-0000-000000000001', 2, FALSE, 1),
+                -- Perihelion Watch / Thermal Engineer
+                ('b5000000-0000-0000-0000-000000000002', 'b2000000-0000-0000-0000-000000000003', 4, TRUE,  2),
+                -- Perihelion Watch / Science Officer
+                ('b5000000-0000-0000-0000-000000000003', 'b2000000-0000-0000-0000-000000000004', 3, TRUE,  2),
+                -- Meridian Uplink / Comms Specialist
+                ('b5000000-0000-0000-0000-000000000004', 'b2000000-0000-0000-0000-000000000004', 3, TRUE,  2),
+                -- Zenith Station Run / Flight Engineer
+                ('b5000000-0000-0000-0000-000000000005', 'b2000000-0000-0000-0000-000000000003', 3, TRUE,  2),
+                ('b5000000-0000-0000-0000-000000000005', 'b2000000-0000-0000-0000-000000000002', 2, FALSE, 1);
+      rollback:
+        - sql:
+            sql: DELETE FROM required_skill WHERE crew_requirement_id IN (SELECT id FROM crew_requirement WHERE organisation_id IN ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001'));

@@ -5,9 +5,11 @@
  * <p>It gets a module of its own so {@code mission} does not have to depend on {@code crew} merely
  * to name a skill. Nothing here knows what a mission or a crew member is, and that is the point.
  *
- * <p>Closed, and everything lives in {@code internal}. There is no {@code api} package yet because
- * no other module has asked for a type from this one. When {@code crew} needs to validate a skill
- * id, that is the moment to publish a lookup interface - not before.
+ * <p>The {@code api} package holds exactly one interface,
+ * {@link com.missioncontrol.skill.api.SkillCatalogue}, added when feature 04 gave a second module
+ * a real reason to resolve a skill id - {@code mission} must reject a retired skill on a
+ * requirement and print the name of one already chosen. Everything else stays in
+ * {@code internal}, including the HTTP endpoints and the entity.
  *
  * <p>The allow-list names only {@code platform}, which is where {@code CurrentUser} comes from.
  * {@code shared} is deliberately absent: reading the catalogue is open to every role, so nothing

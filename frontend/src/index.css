@@ -1,3 +1,11 @@
+/*
+ * Everything visual is MUI, themed in `src/theme.ts`. What is left here is the page background and
+ * the palette as custom properties, kept because `theme.ts` documents itself against them and
+ * because the background has to be painted before React mounts - otherwise the first paint is a
+ * white flash on a dark application.
+ *
+ * Keep these two in step. If a colour changes here, change it in `theme.ts` as well.
+ */
 :root {
   --mc-bg: #0b1020;
   --mc-surface: #151b30;
@@ -7,12 +15,12 @@
   --mc-accent: #6ea8fe;
 
   color-scheme: dark;
-  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  font-family:
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    sans-serif;
   line-height: 1.5;
-}
-
-* {
-  box-sizing: border-box;
 }
 
 body {
@@ -20,125 +28,4 @@ body {
   min-height: 100vh;
   background: var(--mc-bg);
   color: var(--mc-text);
-}
-
-.mc-shell {
-  max-width: 46rem;
-  margin: 0 auto;
-  /* Extra top padding leaves room for the account menu, which is fixed to the viewport corner
-     and therefore outside this column's flow. */
-  padding: 4.5rem 1.5rem 3rem;
-}
-
-.mc-title {
-  margin: 0 0 0.25rem;
-  font-size: 1.75rem;
-  letter-spacing: -0.01em;
-}
-
-.mc-subtitle {
-  margin: 0 0 2rem;
-  color: var(--mc-muted);
-}
-
-.mc-card {
-  background: var(--mc-surface);
-  border: 1px solid var(--mc-border);
-  border-radius: 0.75rem;
-  padding: 1.25rem 1.5rem;
-}
-
-.mc-card h2 {
-  margin: 0 0 1rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--mc-muted);
-}
-
-.mc-facts {
-  display: grid;
-  grid-template-columns: 10rem 1fr;
-  gap: 0.6rem 1rem;
-  margin: 0;
-}
-
-.mc-facts dt {
-  color: var(--mc-muted);
-}
-
-.mc-facts dd {
-  margin: 0;
-  font-variant-numeric: tabular-nums;
-}
-
-.mc-error {
-  color: #ff8f8f;
-}
-
-code {
-  font-family: 'Cascadia Code', Consolas, monospace;
-  font-size: 0.9em;
-  color: var(--mc-accent);
-}
-
-/* --- Authentication ------------------------------------------------------ */
-
-.mc-login {
-  max-width: 26rem;
-}
-
-.mc-form {
-  display: grid;
-  gap: 1rem;
-}
-
-.mc-field {
-  display: grid;
-  gap: 0.35rem;
-}
-
-.mc-label {
-  font-size: 0.85rem;
-  color: var(--mc-muted);
-}
-
-.mc-input {
-  width: 100%;
-  padding: 0.55rem 0.7rem;
-  font: inherit;
-  color: var(--mc-text);
-  background: var(--mc-bg);
-  border: 1px solid var(--mc-border);
-  border-radius: 0.5rem;
-}
-
-.mc-input:focus-visible {
-  outline: 2px solid var(--mc-accent);
-  outline-offset: 1px;
-}
-
-.mc-button {
-  justify-self: start;
-  padding: 0.55rem 1.1rem;
-  font: inherit;
-  font-weight: 600;
-  color: var(--mc-bg);
-  background: var(--mc-accent);
-  border: 1px solid transparent;
-  border-radius: 0.5rem;
-  cursor: pointer;
-}
-
-.mc-button:disabled {
-  opacity: 0.6;
-  cursor: default;
-}
-
-
-.mc-hint {
-  margin: 1.25rem 0 0;
-  font-size: 0.85rem;
-  color: var(--mc-muted);
 }

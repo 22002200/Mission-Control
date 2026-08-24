@@ -1,7 +1,10 @@
+import { ThemeProvider } from '@mui/material/styles';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 import { AuthContext, type AuthContextValue } from '../../auth/AuthContext';
 import { LoginFailedError } from '../../auth/LoginFailedError';
+import { theme } from '../../theme';
 import LoginPage from '../LoginPage';
 
 function renderWith(login: AuthContextValue['login']) {
@@ -11,10 +14,16 @@ function renderWith(login: AuthContextValue['login']) {
     login,
     logout: vi.fn(),
   };
+  // A router is needed now: the page redirects an already-signed-in visitor onwards, and reads
+  // the attempted path out of location state.
   return render(
-    <AuthContext.Provider value={value}>
-      <LoginPage />
-    </AuthContext.Provider>,
+    <ThemeProvider theme={theme}>
+      <AuthContext.Provider value={value}>
+        <MemoryRouter initialEntries={['/login']}>
+          <LoginPage />
+        </MemoryRouter>
+      </AuthContext.Provider>
+    </ThemeProvider>,
   );
 }
 
@@ -40,10 +49,7 @@ describe('LoginPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
 
     await waitFor(() =>
-      expect(login).toHaveBeenCalledWith(
-        'vera.lindholm@orbitaldynamics.example',
-        'Password123!',
-      ),
+      expect(login).toHaveBeenCalledWith('vera.lindholm@orbitaldynamics.example', 'Password123!'),
     );
   });
 
@@ -61,9 +67,7 @@ describe('LoginPage', () => {
     fillIn('vera@x.example', 'wrong');
     fireEvent.click(screen.getByRole('button', { name: 'Sign in' }));
 
-    expect(await screen.findByRole('alert')).toHaveTextContent(
-      'Email or password is incorrect.',
-    );
+    expect(await screen.findByRole('alert')).toHaveTextContent('Email or password is incorrect.');
   });
 
   it('shows the disabled-account message distinctly', async () => {
@@ -96,9 +100,7 @@ describe('LoginPage', () => {
     fillIn('vera@x.example', 'Password123!');
     fireEvent.click(screen.getByRole('button', { name: /Signing in|Sign in/ }));
 
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Signing in…' })).toBeDisabled(),
-    );
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Signing in…' })).toBeDisabled());
 
     release();
   });
@@ -106,7 +108,9 @@ describe('LoginPage', () => {
   it('never renders the typed password back into the document', async () => {
     // The value lives in the input, but nothing should echo it into an error message or the DOM
     // text - that is how passwords end up in screenshots and bug reports.
-    const login = vi.fn().mockRejectedValue(new LoginFailedError('Email or password is incorrect.'));
+    const login = vi
+      .fn()
+      .mockRejectedValue(new LoginFailedError('Email or password is incorrect.'));
     renderWith(login);
 
     fillIn('vera@x.example', 'super-secret-value');

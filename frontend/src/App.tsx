@@ -1,26 +1,40 @@
-import AccountMenu from './components/AccountMenu';
-import { useAuth } from './auth/useAuth';
+import { Navigate, Route, Routes } from 'react-router';
+import AppLayout from './components/AppLayout';
+import RequireAuth from './components/RequireAuth';
 import LoginPage from './pages/LoginPage';
-import SystemInfoPage from './pages/SystemInfoPage';
+import MissionDetailPage from './pages/MissionDetailPage';
+import MissionsPage from './pages/MissionsPage';
 
+/**
+ * The route table.
+ *
+ * There is a router now. Until this feature the application had exactly two states - signed in or
+ * not - and conditional rendering said that more plainly than a one-entry route table would have.
+ * Missions changed that: a list and a detail view that has to be linkable, bookmarkable and
+ * survive a refresh is precisely what a router is for.
+ *
+ * Everything except the login page sits behind `RequireAuth`, so a new screen cannot be added
+ * without a deliberate decision about whether it is public.
+ */
 export default function App() {
-  const { status } = useAuth();
-
   return (
-    <main className="mc-shell">
-      {/* Fixed to the viewport corner, so it sits outside the centred column. */}
-      {status === 'authenticated' && <AccountMenu />}
+    <Routes>
+      <Route path="/login" element={<LoginPage />} />
 
-      <h1 className="mc-title">Mission Control</h1>
-      <p className="mc-subtitle">Space mission planning and crew assignment.</p>
+      <Route
+        element={
+          <RequireAuth>
+            <AppLayout />
+          </RequireAuth>
+        }
+      >
+        <Route path="/missions" element={<MissionsPage />} />
+        <Route path="/missions/:missionId" element={<MissionDetailPage />} />
+      </Route>
 
-      {/* Restoring a stored session takes one request; showing the login form in the meantime
-          would make every refresh flash a sign-in screen at an already-signed-in user. */}
-      {status === 'loading' && <p className="mc-subtitle">Restoring session…</p>}
-
-      {status === 'anonymous' && <LoginPage />}
-
-      {status === 'authenticated' && <SystemInfoPage />}
-    </main>
+      {/* Missions is the only destination, so anything else lands there rather than on a
+          not-found page that would only ever say the same thing. */}
+      <Route path="*" element={<Navigate to="/missions" replace />} />
+    </Routes>
   );
 }

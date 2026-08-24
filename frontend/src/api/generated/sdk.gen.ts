@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { CurrentUserData, CurrentUserErrors, CurrentUserResponses, GetSkillData, GetSkillErrors, GetSkillResponses, GetSystemInfoData, GetSystemInfoResponses, ListSkillsData, ListSkillsErrors, ListSkillsResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses } from './types.gen';
+import type { AddRequirementData, AddRequirementErrors, AddRequirementResponses, CloseMissionData, CloseMissionErrors, CloseMissionResponses, CreateMissionData, CreateMissionErrors, CreateMissionResponses, CurrentUserData, CurrentUserErrors, CurrentUserResponses, DeleteRequirementData, DeleteRequirementErrors, DeleteRequirementResponses, GetMissionData, GetMissionErrors, GetMissionResponses, GetSkillData, GetSkillErrors, GetSkillResponses, GetSystemInfoData, GetSystemInfoResponses, ListMissionsData, ListMissionsErrors, ListMissionsResponses, ListSkillsData, ListSkillsErrors, ListSkillsResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, StartMissionData, StartMissionErrors, StartMissionResponses, UpdateMissionData, UpdateMissionErrors, UpdateMissionResponses, UpdateRequirementData, UpdateRequirementErrors, UpdateRequirementResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -17,6 +17,73 @@ export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends 
      */
     meta?: keyof ClientMeta extends never ? Record<string, unknown> : ClientMeta;
 };
+
+/**
+ * List missions
+ *
+ * Scoped by role: a mission lead sees the missions they own, a director sees every mission in the organisation, and a crew member sees only the ones they hold an assignment on. Sorted by start date.
+ */
+export const listMissions = <ThrowOnError extends boolean = false>(options?: Options<ListMissionsData, ThrowOnError>): RequestResult<ListMissionsResponses, ListMissionsErrors, ThrowOnError> => (options?.client ?? client).get<ListMissionsResponses, ListMissionsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/missions',
+    ...options
+});
+
+/**
+ * Create a mission
+ *
+ * The new mission starts in PLAN and is owned by the caller. Directors cannot create missions, so a mission always has a mission lead as its owner.
+ */
+export const createMission = <ThrowOnError extends boolean = false>(options: Options<CreateMissionData, ThrowOnError>): RequestResult<CreateMissionResponses, CreateMissionErrors, ThrowOnError> => (options.client ?? client).post<CreateMissionResponses, CreateMissionErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/missions',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Add a crew requirement
+ *
+ * Only the owning mission lead, and only while the mission is in PLAN.
+ */
+export const addRequirement = <ThrowOnError extends boolean = false>(options: Options<AddRequirementData, ThrowOnError>): RequestResult<AddRequirementResponses, AddRequirementErrors, ThrowOnError> => (options.client ?? client).post<AddRequirementResponses, AddRequirementErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/missions/{missionId}/requirements',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Start a mission
+ *
+ * Moves an APPROVED mission to ACTIVE. Every crew requirement must be filled first; the conflict response names the ones that are not.
+ */
+export const startMission = <ThrowOnError extends boolean = false>(options: Options<StartMissionData, ThrowOnError>): RequestResult<StartMissionResponses, StartMissionErrors, ThrowOnError> => (options.client ?? client).post<StartMissionResponses, StartMissionErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/missions/{id}/start',
+    ...options
+});
+
+/**
+ * Close a mission
+ *
+ * Closing is terminal and is reachable from any other status - this is also how a mission is aborted. Omitting the reason records COMPLETED for a mission that was ACTIVE and ABORTED for anything else.
+ */
+export const closeMission = <ThrowOnError extends boolean = false>(options: Options<CloseMissionData, ThrowOnError>): RequestResult<CloseMissionResponses, CloseMissionErrors, ThrowOnError> => (options.client ?? client).post<CloseMissionResponses, CloseMissionErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/missions/{id}/close',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
 
 /**
  * Log out
@@ -36,6 +103,58 @@ export const logout = <ThrowOnError extends boolean = false>(options?: Options<L
  */
 export const login = <ThrowOnError extends boolean = false>(options: Options<LoginData, ThrowOnError>): RequestResult<LoginResponses, LoginErrors, ThrowOnError> => (options.client ?? client).post<LoginResponses, LoginErrors, ThrowOnError>({
     url: '/api/auth/login',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Remove a crew requirement
+ *
+ * Only the owning mission lead, and only while the mission is in PLAN.
+ */
+export const deleteRequirement = <ThrowOnError extends boolean = false>(options: Options<DeleteRequirementData, ThrowOnError>): RequestResult<DeleteRequirementResponses, DeleteRequirementErrors, ThrowOnError> => (options.client ?? client).delete<DeleteRequirementResponses, DeleteRequirementErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/missions/{missionId}/requirements/{requirementId}',
+    ...options
+});
+
+/**
+ * Replace a crew requirement
+ *
+ * Replaces the requirement whole, skills included. A skill absent from the request is removed, because there is no meaningful partial update of a set.
+ */
+export const updateRequirement = <ThrowOnError extends boolean = false>(options: Options<UpdateRequirementData, ThrowOnError>): RequestResult<UpdateRequirementResponses, UpdateRequirementErrors, ThrowOnError> => (options.client ?? client).patch<UpdateRequirementResponses, UpdateRequirementErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/missions/{missionId}/requirements/{requirementId}',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Get one mission
+ *
+ * With its crew requirements and staffing counts. A mission the caller cannot see - another organisation, another lead, or one they are not assigned to - is reported as absent rather than as forbidden.
+ */
+export const getMission = <ThrowOnError extends boolean = false>(options: Options<GetMissionData, ThrowOnError>): RequestResult<GetMissionResponses, GetMissionErrors, ThrowOnError> => (options.client ?? client).get<GetMissionResponses, GetMissionErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/missions/{id}',
+    ...options
+});
+
+/**
+ * Edit a mission
+ *
+ * Omitted fields are left as they are. Editing an APPROVED or ACTIVE mission returns it to PLAN, because the approval described a plan that no longer exists and it has to be resubmitted.
+ */
+export const updateMission = <ThrowOnError extends boolean = false>(options: Options<UpdateMissionData, ThrowOnError>): RequestResult<UpdateMissionResponses, UpdateMissionErrors, ThrowOnError> => (options.client ?? client).patch<UpdateMissionResponses, UpdateMissionErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/missions/{id}',
     ...options,
     headers: {
         'Content-Type': 'application/json',

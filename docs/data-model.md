@@ -112,8 +112,8 @@ loop keeps its full history rather than overwriting a single rejection reason.
 | `crewRequirementId` | |
 | `skillId` | |
 | `minimumProficiency` | 1–5 |
-| `mandatory` | true = hard filter, false = contributes to ranking |
-| `weight` | ranking weight for preferred skills |
+| `mandatory` | true = hard filter **and** scored, preferring the least over-qualified; false = optional, scored preferring higher proficiency |
+| `weight` | ranking weight for any required skill; defaults to 1 |
 
 ### `assignment`
 
@@ -203,6 +203,11 @@ Numbered so code and tests can cite them.
 - **M8** A mission has at most one `MissionApproval` with `decision = PENDING` at a time.
 - **M9** `requiredCount` is at least 1.
 - **M10** `(crewRequirementId, skillId)` is unique, and `minimumProficiency` is 1–5.
+- **M11** `APPROVED` to `ACTIVE` requires every `CrewRequirement` to have `requiredCount`
+  `ACCEPTED` assignments. This is a precondition of the transition, not a standing invariant:
+  withdrawing crew from an already-`ACTIVE` mission does not revert it.
+- **M12** Submitting for approval requires at least one `CrewRequirement`. Without this a mission
+  with no requirements is vacuously fully staffed under M11 and could be started immediately.
 
 ### Assignment
 

@@ -27,6 +27,17 @@ class UnstaffedReadModel implements StaffingReadModel {
         return Map.of();
     }
 
+    /**
+     * Nothing has been offered either, which is what makes every seat on every requirement read as
+     * open. Feature 06 then suggests a full crew for a mission before feature 07 exists, and that
+     * is the right answer rather than a special case: with no assignment module there is nobody to
+     * have offered anyone anything.
+     */
+    @Override
+    public Map<UUID, Integer> offeredCountsByRequirement(Collection<UUID> requirementIds) {
+        return Map.of();
+    }
+
     @Override
     public Set<UUID> missionIdsAssignedTo(UUID crewUserId, UUID organisationId) {
         return Set.of();

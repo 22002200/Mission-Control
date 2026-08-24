@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AddRequirementData, AddRequirementErrors, AddRequirementResponses, ApproveMissionData, ApproveMissionErrors, ApproveMissionResponses, CloseMissionData, CloseMissionErrors, CloseMissionResponses, CreateMissionData, CreateMissionErrors, CreateMissionResponses, CurrentUserData, CurrentUserErrors, CurrentUserResponses, DeleteRequirementData, DeleteRequirementErrors, DeleteRequirementResponses, GetMissionData, GetMissionErrors, GetMissionResponses, GetSkillData, GetSkillErrors, GetSkillResponses, GetSystemInfoData, GetSystemInfoResponses, ListMissionApprovalsData, ListMissionApprovalsErrors, ListMissionApprovalsResponses, ListMissionsData, ListMissionsErrors, ListMissionsResponses, ListSkillsData, ListSkillsErrors, ListSkillsResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, RejectMissionData, RejectMissionErrors, RejectMissionResponses, ReplanMissionData, ReplanMissionErrors, ReplanMissionResponses, StartMissionData, StartMissionErrors, StartMissionResponses, SubmitMissionData, SubmitMissionErrors, SubmitMissionResponses, UpdateMissionData, UpdateMissionErrors, UpdateMissionResponses, UpdateRequirementData, UpdateRequirementErrors, UpdateRequirementResponses } from './types.gen';
+import type { AddRequirementData, AddRequirementErrors, AddRequirementResponses, ApproveMissionData, ApproveMissionErrors, ApproveMissionResponses, CloseMissionData, CloseMissionErrors, CloseMissionResponses, CreateMissionData, CreateMissionErrors, CreateMissionResponses, CurrentUserData, CurrentUserErrors, CurrentUserResponses, DeleteRequirementData, DeleteRequirementErrors, DeleteRequirementResponses, GetMissionData, GetMissionErrors, GetMissionResponses, GetSkillData, GetSkillErrors, GetSkillResponses, GetSystemInfoData, GetSystemInfoResponses, ListMissionApprovalsData, ListMissionApprovalsErrors, ListMissionApprovalsResponses, ListMissionsData, ListMissionsErrors, ListMissionsResponses, ListSkillsData, ListSkillsErrors, ListSkillsResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, MatchAllData, MatchAllErrors, MatchAllResponses, MatchRequirementData, MatchRequirementErrors, MatchRequirementResponses, RejectMissionData, RejectMissionErrors, RejectMissionResponses, ReplanMissionData, ReplanMissionErrors, ReplanMissionResponses, StartMissionData, StartMissionErrors, StartMissionResponses, SubmitMissionData, SubmitMissionErrors, SubmitMissionResponses, UpdateMissionData, UpdateMissionErrors, UpdateMissionResponses, UpdateRequirementData, UpdateRequirementErrors, UpdateRequirementResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -244,6 +244,28 @@ export const listSkills = <ThrowOnError extends boolean = false>(options?: Optio
 export const getSkill = <ThrowOnError extends boolean = false>(options: Options<GetSkillData, ThrowOnError>): RequestResult<GetSkillResponses, GetSkillErrors, ThrowOnError> => (options.client ?? client).get<GetSkillResponses, GetSkillErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/skills/{id}',
+    ...options
+});
+
+/**
+ * Rank candidates for one requirement
+ *
+ * Candidates failing a mandatory skill, or already committed over the mission's dates, are absent rather than ranked last. Pass the crew members already seen or drafted as exclude to get the next batch.
+ */
+export const matchRequirement = <ThrowOnError extends boolean = false>(options: Options<MatchRequirementData, ThrowOnError>): RequestResult<MatchRequirementResponses, MatchRequirementErrors, ThrowOnError> => (options.client ?? client).get<MatchRequirementResponses, MatchRequirementErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/missions/{missionId}/requirements/{requirementId}/matches',
+    ...options
+});
+
+/**
+ * Draft a crew for the whole mission
+ *
+ * Returns the highest-ranked candidates for every requirement's open seats. No crew member appears twice: a candidate topping two requirements is drafted onto the one with fewer alternatives. Nothing is offered and nothing is saved.
+ */
+export const matchAll = <ThrowOnError extends boolean = false>(options: Options<MatchAllData, ThrowOnError>): RequestResult<MatchAllResponses, MatchAllErrors, ThrowOnError> => (options.client ?? client).get<MatchAllResponses, MatchAllErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/missions/{missionId}/matches',
     ...options
 });
 

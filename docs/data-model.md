@@ -244,6 +244,7 @@ Computed on read. Storing them would create a second source of truth that drifts
 | Assignment history | `ACCEPTED` assignments on missions closed as `COMPLETED`. |
 | Requirement fill status | Count of `ACCEPTED` assignments against `requiredCount`. Owned by the `assignment` module — see the cycle note in `architecture.md`. |
 | Match suggestions | Computed per request by the `matching` module. |
+| Mission tempo | The median duration of an organisation's missions closed as `COMPLETED`. Feature [06](features/06-crew-matching.md) scales its recency window to it, so an organisation running three-day sorties and one running six-month expeditions are measured on their own timescales rather than a shared year. Median rather than mean, so one freak multi-year mission cannot drag it — which is also why the window needs no floor or ceiling. |
 | Org-level metrics | Aggregated over missions and assignments for the director dashboard. |
 
 ## Open questions

@@ -5,6 +5,7 @@ import {
   canCreateMission,
   canDecideMission,
   canManageRequirements,
+  canMatchCrew,
   canModifyMission,
   canReplanMission,
   canStartMission,
@@ -169,5 +170,26 @@ describe('canReplanMission', () => {
     expect(canReplanMission(LEAD, mission('ACTIVE'))).toBe(false);
     expect(canReplanMission(LEAD, mission('PLAN'))).toBe(false);
     expect(canReplanMission(LEAD, mission('CLOSED'))).toBe(false);
+  });
+});
+
+describe('canMatchCrew', () => {
+  it('is the owning lead or any director', () => {
+    expect(canMatchCrew(LEAD, mission('PLAN'))).toBe(true);
+    expect(canMatchCrew(DIRECTOR, mission('PLAN'))).toBe(true);
+    expect(canMatchCrew(OTHER_LEAD, mission('PLAN'))).toBe(false);
+    // A crew member assigned to the mission can read it but never suggest crew for it.
+    expect(canMatchCrew(CREW, mission('PLAN'))).toBe(false);
+    expect(canMatchCrew(null, mission('PLAN'))).toBe(false);
+  });
+
+  it('is offered in every status, including PLAN and CLOSED', () => {
+    // Sizing a plan before submitting it is the point, so unlike the other predicates this one
+    // deliberately does not test the status at all.
+    (['PLAN', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED', 'ACTIVE', 'CLOSED'] as const).forEach(
+      (status) => {
+        expect(canMatchCrew(LEAD, mission(status))).toBe(true);
+      },
+    );
   });
 });

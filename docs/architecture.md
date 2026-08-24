@@ -20,10 +20,10 @@ com.missioncontrol
 ├── shared                         <- OPEN module (shared kernel: UserRole)
 ├── identity                       <- Organisation, User (first closed module)
 ├── skill                          <- Skill (read endpoints only so far)
-├── crew                           <- planned: CrewMember, CrewSkill
+├── crew                           <- CrewMember, CrewSkill (no HTTP surface yet)
 ├── mission                        <- Mission, CrewRequirement, RequiredSkill
 ├── assignment                     <- planned: Assignment
-└── matching                       <- planned: crew matching engine (owns no data)
+└── matching                       <- crew matching engine (owns no data)
 ```
 
 Within a domain module:
@@ -157,6 +157,32 @@ mission's dates and status. So `mission` must **not** depend on `assignment`. Tw
 
 - "Is this requirement filled?" is a read model owned by `assignment`, not by `mission`.
 - `mission` learns about acceptances through an `AssignmentAccepted` event, not a direct call.
+
+### Published interfaces
+
+What each module lets the others see. The rule is that `api` stays small: an interface earns its
+place when a *second* module genuinely needs the data, not in anticipation of one.
+
+| Interface | Declared in | Implemented by | Why it exists |
+| --- | --- | --- | --- |
+| `identity.api.UserDirectory` | `identity` | `identity` | Missions and match results name people; ids alone cannot be rendered |
+| `skill.api.SkillCatalogue` | `skill` | `skill` | Requirements and crew ratings store `skillId`; something has to reject a retired one and print a name |
+| `crew.api.CrewDirectory` | `crew` | `crew` | Matching scores the whole roster, so it needs every profile and every rating at once |
+| `mission.api.MissionPlans` | `mission` | `mission` | Matching needs the mission window and its requirements, and the access rules that decide who may see them |
+| `mission.api.MissionTempo` | `mission` | `mission` | The load penalty scales to how long this organisation's missions actually run |
+| `mission.api.StaffingReadModel` | `mission` | `assignment` | **A port.** The consumer declares it so the arrow keeps pointing `assignment → mission` |
+| `matching.api.CrewLoadReadModel` | `matching` | `assignment` | **A port**, same shape and same reason: availability and workload are assignment facts |
+
+The two ports are the interesting entries. Both are declared by the module that *needs* the data
+rather than the one that owns it, because declaring them the natural way round would create the
+cycle. Both have a no-op standing in until `assignment` exists — `UnstaffedReadModel` and
+`UnassignedCrewLoad`, resolved through an `ObjectProvider` so the application starts without them.
+
+The no-ops are not equivalent, and the difference is worth keeping straight. `UnstaffedReadModel`
+reporting nothing makes a mission read as un-startable, which is a deliberate refusal: there is no
+way to crew one yet. `UnassignedCrewLoad` reporting nothing is simply true — with no assignments
+there is nobody to exclude and no load to penalise, so matching's answers are correct rather than
+provisional.
 
 ### Entity relationships
 

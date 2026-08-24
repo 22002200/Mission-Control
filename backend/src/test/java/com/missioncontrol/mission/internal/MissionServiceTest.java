@@ -465,6 +465,15 @@ class MissionServiceTest {
             return acceptedCounts;
         }
 
+        /**
+         * Nothing here reads offered counts - they exist for feature 06's open-seat arithmetic, and
+         * this test is about staffing a mission rather than suggesting crew for one.
+         */
+        @Override
+        public Map<UUID, Integer> offeredCountsByRequirement(java.util.Collection<UUID> ids) {
+            return Map.of();
+        }
+
         @Override
         public Set<UUID> missionIdsAssignedTo(UUID crewUserId, UUID organisationId) {
             return assignedMissions;

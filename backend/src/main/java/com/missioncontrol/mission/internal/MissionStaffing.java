@@ -41,6 +41,18 @@ class MissionStaffing {
         return readModel.getIfAvailable(() -> NONE).acceptedCountsByRequirement(requirementIds);
     }
 
+    /**
+     * Outstanding offers for a set of requirements. Same contract as
+     * {@link #acceptedCounts(Collection)}: an absent entry means zero, and an empty input never
+     * reaches the read model.
+     */
+    Map<UUID, Integer> offeredCounts(Collection<UUID> requirementIds) {
+        if (requirementIds.isEmpty()) {
+            return Map.of();
+        }
+        return readModel.getIfAvailable(() -> NONE).offeredCountsByRequirement(requirementIds);
+    }
+
     Set<UUID> missionIdsAssignedTo(UUID crewUserId, UUID organisationId) {
         return readModel.getIfAvailable(() -> NONE).missionIdsAssignedTo(crewUserId, organisationId);
     }

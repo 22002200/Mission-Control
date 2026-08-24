@@ -70,6 +70,30 @@ missioncontrol:
   cors:
     allowed-origins: http://localhost:5173
 
+  # Crew matching scoring constants - feature 06, NFR-6. These encode a judgement
+  # about how an organisation trades experience against availability, and a
+  # judgement nobody can change without a rebuild is not one anybody revisits.
+  matching:
+    # Skill fit spans a full 0 to 1; both caps below are deliberately a third of
+    # that, so closeness of fit stays the dominant signal and these stay secondary.
+    experience-bonus-per-mission: 0.1
+    experience-bonus-cap: 0.3
+    load-penalty-per-assignment: 0.05
+    # A positive magnitude. It is subtracted at the point of use - a negative
+    # number here that then gets subtracted reads correctly and behaves backwards.
+    load-penalty-cap: 0.3
+    # How many median missions of history still count as recent load. A window one
+    # mission long would find almost nobody loaded, and a penalty that never fires
+    # is a term that has quietly stopped participating in the ranking. Six reads as
+    # roughly the last half-dozen missions' worth of time.
+    load-window-multiplier: 6
+    # Only for an organisation that has completed no missions and so has no median
+    # to scale to. Every other organisation is measured on its own timescale.
+    default-load-window: P365D
+    default-limit: 3
+    max-limit: 10
+    max-excluded: 50
+
   security:
     jwt:
       issuer: mission-control

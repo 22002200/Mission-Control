@@ -196,6 +196,58 @@ describe('MissionDetailPage', () => {
     expect(screen.getByText('Mandatory')).toBeInTheDocument();
   });
 
+  it('offers the owning lead a way through to crew matching', async () => {
+    renderDetail(
+      LEAD,
+      mission({
+        requirements: [
+          {
+            id: 'a5000000-0000-0000-0000-000000000001',
+            title: 'Flight Engineer',
+            requiredCount: 2,
+            acceptedCount: 0,
+            skills: [],
+          },
+        ],
+      }),
+    );
+
+    const match = await screen.findByRole('link', { name: 'Match crew' });
+    expect(match).toHaveAttribute('href', `/missions/${MISSION_ID}/crew`);
+  });
+
+  it('offers a director the same way through - they can staff any mission they can see', async () => {
+    renderDetail(
+      DIRECTOR,
+      mission({
+        requirements: [
+          {
+            id: 'a5000000-0000-0000-0000-000000000001',
+            title: 'Flight Engineer',
+            requiredCount: 2,
+            acceptedCount: 0,
+            skills: [],
+          },
+        ],
+      }),
+    );
+
+    expect(await screen.findByRole('link', { name: 'Match crew' })).toBeInTheDocument();
+  });
+
+  it('disables Match crew with a reason when there is nothing to staff', async () => {
+    renderDetail(LEAD, mission({ requirements: [] }));
+
+    // Disabled rather than hidden, like Submit and Start: with no requirements there is nobody to
+    // look for, and the reason is the useful part.
+    const match = await screen.findByRole('link', { name: 'Match crew' });
+    expect(match).toHaveAttribute('aria-disabled', 'true');
+    expect(match).toHaveAttribute(
+      'title',
+      'Add a crew requirement before looking for people to fill it.',
+    );
+  });
+
   it('explains a mission it cannot load rather than showing an empty page', async () => {
     vi.mocked(getMission).mockRejectedValue({
       type: 'urn:mission-control:not-found',

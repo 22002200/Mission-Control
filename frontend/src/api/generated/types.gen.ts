@@ -292,6 +292,109 @@ export type MissionSummaryResponse = {
 };
 
 /**
+ * How a candidate's score was arrived at.
+ */
+export type CandidateBreakdown = {
+    /**
+     * The weighted average across every required skill, 0 to 1.
+     */
+    skillScore: number;
+    experienceBonus: number;
+    /**
+     * Accepted assignments on missions closed as completed.
+     */
+    completedMissions: number;
+    /**
+     * A positive magnitude. It is subtracted from the score.
+     */
+    loadPenalty: number;
+    /**
+     * Accepted assignments starting inside the organisation's recency window, or in the future.
+     */
+    recentAssignments: number;
+};
+
+/**
+ * A crew member who could fill the requirement, with the reasoning.
+ */
+export type CandidateResponse = {
+    crewMemberId: string;
+    fullName: string;
+    /**
+     * Skill fit plus experience less load, to three decimals.
+     */
+    score: number;
+    breakdown: CandidateBreakdown;
+    /**
+     * Every skill the requirement asked for, whether or not it was met.
+     */
+    skills: Array<CandidateSkillResponse>;
+    /**
+     * Preferred skills held below the minimum, or not held at all. Mandatory skills never appear here - falling short of one is an exclusion, not a shortfall.
+     */
+    shortfalls: Array<CandidateSkillResponse>;
+};
+
+/**
+ * One required skill and how it scored for this candidate.
+ */
+export type CandidateSkillResponse = {
+    skillId: string;
+    skillName: string;
+    /**
+     * The minimum the requirement asks for.
+     */
+    required: number;
+    /**
+     * What the candidate is rated at. Zero means they hold no rating for this skill at all.
+     */
+    actual: number;
+    /**
+     * True if falling short of this skill would have excluded them.
+     */
+    mandatory: boolean;
+    weight: number;
+    /**
+     * 0 to 1. For a mandatory skill this falls as the candidate exceeds the minimum; for a preferred one it rises towards it.
+     */
+    contribution: number;
+};
+
+/**
+ * Ranked candidates for one crew requirement.
+ */
+export type RequirementMatchResponse = {
+    requirementId: string;
+    title: string;
+    requiredCount: number;
+    acceptedCount: number;
+    offeredCount: number;
+    /**
+     * Required, less accepted, less offered. Never negative.
+     */
+    openSeats: number;
+    /**
+     * Eligible candidates neither excluded nor returned. Zero means a rematch has nothing further to offer.
+     */
+    remainingCount: number;
+    /**
+     * Best first. Empty is a valid answer, not an error.
+     */
+    candidates: Array<CandidateResponse>;
+};
+
+/**
+ * A suggested crew for every open seat on a mission. Nothing is offered.
+ */
+export type MissionMatchResponse = {
+    missionId: string;
+    /**
+     * Every requirement on the mission, including ones with no open seats, in mission order.
+     */
+    requirements: Array<RequirementMatchResponse>;
+};
+
+/**
  * One submit-and-decide cycle on a mission.
  */
 export type MissionApprovalResponse = {
@@ -989,6 +1092,90 @@ export type GetSkillResponses = {
 };
 
 export type GetSkillResponse = GetSkillResponses[keyof GetSkillResponses];
+
+export type MatchRequirementData = {
+    body?: never;
+    path: {
+        missionId: string;
+        requirementId: string;
+    };
+    query?: {
+        /**
+         * How many candidates to return.
+         */
+        limit?: number;
+        /**
+         * Crew members to leave out - typically everyone already drafted onto this mission plus everyone already shown for this requirement. Unknown or ineligible ids are ignored, not rejected.
+         */
+        exclude?: Array<string>;
+    };
+    url: '/api/missions/{missionId}/requirements/{requirementId}/matches';
+};
+
+export type MatchRequirementErrors = {
+    /**
+     * A parameter is out of range
+     */
+    400: ProblemDetail;
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+    /**
+     * Not the owning mission lead or a director
+     */
+    403: ProblemDetail;
+    /**
+     * No such mission, or no such requirement on it
+     */
+    404: ProblemDetail;
+};
+
+export type MatchRequirementError = MatchRequirementErrors[keyof MatchRequirementErrors];
+
+export type MatchRequirementResponses = {
+    /**
+     * Ranked candidates, best first
+     */
+    200: RequirementMatchResponse;
+};
+
+export type MatchRequirementResponse = MatchRequirementResponses[keyof MatchRequirementResponses];
+
+export type MatchAllData = {
+    body?: never;
+    path: {
+        missionId: string;
+    };
+    query?: never;
+    url: '/api/missions/{missionId}/matches';
+};
+
+export type MatchAllErrors = {
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+    /**
+     * Not the owning mission lead or a director
+     */
+    403: ProblemDetail;
+    /**
+     * No such mission in the caller's organisation
+     */
+    404: ProblemDetail;
+};
+
+export type MatchAllError = MatchAllErrors[keyof MatchAllErrors];
+
+export type MatchAllResponses = {
+    /**
+     * A suggested crew, by requirement
+     */
+    200: MissionMatchResponse;
+};
+
+export type MatchAllResponse = MatchAllResponses[keyof MatchAllResponses];
 
 export type ListMissionApprovalsData = {
     body?: never;

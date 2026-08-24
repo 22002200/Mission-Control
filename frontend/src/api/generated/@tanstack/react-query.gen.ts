@@ -3,8 +3,8 @@
 import { type DefaultError, type InfiniteData, infiniteQueryOptions, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { addRequirement, approveMission, closeMission, createMission, currentUser, deleteRequirement, getMission, getSkill, getSystemInfo, listMissionApprovals, listMissions, listSkills, login, logout, type Options, rejectMission, replanMission, startMission, submitMission, updateMission, updateRequirement } from '../sdk.gen';
-import type { AddRequirementData, AddRequirementError, AddRequirementResponse, ApproveMissionData, ApproveMissionError, ApproveMissionResponse, CloseMissionData, CloseMissionError, CloseMissionResponse, CreateMissionData, CreateMissionError, CreateMissionResponse, CurrentUserData, CurrentUserError, CurrentUserResponse2, DeleteRequirementData, DeleteRequirementError, DeleteRequirementResponse, GetMissionData, GetMissionError, GetMissionResponse, GetSkillData, GetSkillError, GetSkillResponse, GetSystemInfoData, GetSystemInfoResponse, ListMissionApprovalsData, ListMissionApprovalsError, ListMissionApprovalsResponse, ListMissionsData, ListMissionsError, ListMissionsResponse, ListSkillsData, ListSkillsError, ListSkillsResponse, LoginData, LoginError, LoginResponse2, LogoutData, LogoutError, LogoutResponse, RejectMissionData, RejectMissionError, RejectMissionResponse, ReplanMissionData, ReplanMissionError, ReplanMissionResponse, StartMissionData, StartMissionError, StartMissionResponse, SubmitMissionData, SubmitMissionError, SubmitMissionResponse, UpdateMissionData, UpdateMissionError, UpdateMissionResponse, UpdateRequirementData, UpdateRequirementError, UpdateRequirementResponse } from '../types.gen';
+import { addRequirement, approveMission, closeMission, createMission, currentUser, deleteRequirement, getMission, getSkill, getSystemInfo, listMissionApprovals, listMissions, listSkills, login, logout, matchAll, matchRequirement, type Options, rejectMission, replanMission, startMission, submitMission, updateMission, updateRequirement } from '../sdk.gen';
+import type { AddRequirementData, AddRequirementError, AddRequirementResponse, ApproveMissionData, ApproveMissionError, ApproveMissionResponse, CloseMissionData, CloseMissionError, CloseMissionResponse, CreateMissionData, CreateMissionError, CreateMissionResponse, CurrentUserData, CurrentUserError, CurrentUserResponse2, DeleteRequirementData, DeleteRequirementError, DeleteRequirementResponse, GetMissionData, GetMissionError, GetMissionResponse, GetSkillData, GetSkillError, GetSkillResponse, GetSystemInfoData, GetSystemInfoResponse, ListMissionApprovalsData, ListMissionApprovalsError, ListMissionApprovalsResponse, ListMissionsData, ListMissionsError, ListMissionsResponse, ListSkillsData, ListSkillsError, ListSkillsResponse, LoginData, LoginError, LoginResponse2, LogoutData, LogoutError, LogoutResponse, MatchAllData, MatchAllError, MatchAllResponse, MatchRequirementData, MatchRequirementError, MatchRequirementResponse, RejectMissionData, RejectMissionError, RejectMissionResponse, ReplanMissionData, ReplanMissionError, ReplanMissionResponse, StartMissionData, StartMissionError, StartMissionResponse, SubmitMissionData, SubmitMissionError, SubmitMissionResponse, UpdateMissionData, UpdateMissionError, UpdateMissionResponse, UpdateRequirementData, UpdateRequirementError, UpdateRequirementResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -477,6 +477,46 @@ export const getSkillOptions = (options: Options<GetSkillData>) => queryOptions<
         return data;
     },
     queryKey: getSkillQueryKey(options)
+});
+
+export const matchRequirementQueryKey = (options: Options<MatchRequirementData>) => createQueryKey('matchRequirement', options);
+
+/**
+ * Rank candidates for one requirement
+ *
+ * Candidates failing a mandatory skill, or already committed over the mission's dates, are absent rather than ranked last. Pass the crew members already seen or drafted as exclude to get the next batch.
+ */
+export const matchRequirementOptions = (options: Options<MatchRequirementData>) => queryOptions<MatchRequirementResponse, MatchRequirementError, MatchRequirementResponse, ReturnType<typeof matchRequirementQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await matchRequirement({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: matchRequirementQueryKey(options)
+});
+
+export const matchAllQueryKey = (options: Options<MatchAllData>) => createQueryKey('matchAll', options);
+
+/**
+ * Draft a crew for the whole mission
+ *
+ * Returns the highest-ranked candidates for every requirement's open seats. No crew member appears twice: a candidate topping two requirements is drafted onto the one with fewer alternatives. Nothing is offered and nothing is saved.
+ */
+export const matchAllOptions = (options: Options<MatchAllData>) => queryOptions<MatchAllResponse, MatchAllError, MatchAllResponse, ReturnType<typeof matchAllQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await matchAll({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: matchAllQueryKey(options)
 });
 
 export const listMissionApprovalsQueryKey = (options: Options<ListMissionApprovalsData>) => createQueryKey('listMissionApprovals', options);

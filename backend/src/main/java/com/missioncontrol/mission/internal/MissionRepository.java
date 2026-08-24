@@ -141,4 +141,36 @@ interface MissionRepository extends JpaRepository<MissionEntity, UUID> {
             where r.mission.id in :missionIds
             """)
     List<RequirementTotals> findRequirementTotals(@Param("missionIds") Collection<UUID> missionIds);
+
+    /**
+     * The median length of the organisation's completed missions, in seconds.
+     *
+     * <p>Native, and it has to be. {@code percentile_cont} is an ordered-set aggregate - the
+     * {@code within group (order by ...)} form - and JPQL has no way to express one, so this
+     * cannot be written as a {@code Query} over the entity model however much tidier that would
+     * read.
+     *
+     * <p>Epoch seconds rather than an {@code interval}. Hibernate maps the aggregate over a
+     * {@code double} straight onto a {@code Double}; over an interval it would need a converter
+     * for a value that is about to be turned into a {@link java.time.Duration} anyway.
+     *
+     * <p>The status and reason arrive as parameters rather than as literals in the SQL. The pinned
+     * codes live on {@link MissionStatus} and {@link MissionCloseReason} and are documented as
+     * append-only; writing 6 and 1 here would put a second, silent copy of that mapping in a
+     * string where no test would ever catch it drifting.
+     *
+     * @return null when the organisation has completed no missions - {@code percentile_cont} over
+     *         an empty set is null, not zero, which is exactly the distinction the caller needs.
+     */
+    @Query(value = """
+            select percentile_cont(0.5) within group (
+                       order by extract(epoch from (m.ends_at - m.starts_at)))
+            from mission m
+            where m.organisation_id = :organisationId
+              and m.status = :closedCode
+              and m.close_reason = :completedCode
+            """, nativeQuery = true)
+    Double findMedianCompletedDurationSeconds(@Param("organisationId") UUID organisationId,
+                                              @Param("closedCode") int closedCode,
+                                              @Param("completedCode") int completedCode);
 }

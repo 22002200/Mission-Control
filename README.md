@@ -378,12 +378,14 @@ These are deliberate, not oversights:
   signing out on one device signs out everywhere.
 - **No user management.** Accounts exist only because feature 01 seeds them; there is no
   registration, invite or password-reset flow.
-- **Missions cannot be crewed or started.** Features 04 and 05 build planning, approval, editing
-  and closing; matching is 06 and crew assignment 07. Until then every mission reads as unstaffed
-  and `POST /start` is refused - correctly, since nobody can accept a place yet.
+- **Missions can be crewed on paper but not in fact.** Feature 06 suggests crew and explains why;
+  actually offering someone a place is 07. Until then every mission reads as unstaffed and
+  `POST /start` is refused - correctly, since nobody can accept a place yet. A crew matching draft
+  is worked out fresh on each request and never saved.
 - **A Director cannot return a rejected mission to planning.** That action is owner-only; a
   Director's route out of a rejected mission is to close it.
-- **The remaining domain modules are missing** — no Crew, Assignment or Matching module, though
-  the crew tables are seeded ready for them.
+- **The Assignment module is missing.** Crew and Matching now exist; assignments do not, so
+  matching's availability filter excludes nobody and its load penalty is always zero. Both are
+  correct answers rather than stubs - there are no assignments to find.
 - **Demo secrets.** `JWT_SECRET` and the database password in `.env.example` are development
   values. Nothing here is a deployment manifest.

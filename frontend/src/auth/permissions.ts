@@ -44,6 +44,24 @@ export function canManageRequirements(
   return !!user && mission.status === 'PLAN' && mission.missionLead.id === user.id;
 }
 
+/**
+ * Feature 06: the owning lead, or any director in the same organisation.
+ *
+ * Deliberately says nothing about status. Matching works in every state, and running it while a
+ * mission is still in PLAN is the point - it is how a lead finds out whether the plan is staffable
+ * before submitting it.
+ *
+ * Wider than `canManageRequirements`, which is PLAN-only and owner-only, and narrower than
+ * visibility: a crew member assigned to the mission can read it but cannot suggest crew for it.
+ */
+export function canMatchCrew(
+  user: CurrentUserResponse | null,
+  mission: Pick<MissionResponse, 'missionLead'>,
+): boolean {
+  if (!user) return false;
+  return user.role === 'DIRECTOR' || mission.missionLead.id === user.id;
+}
+
 /** Only an APPROVED mission can be started, and only by someone who may modify it. */
 export function canStartMission(
   user: CurrentUserResponse | null,

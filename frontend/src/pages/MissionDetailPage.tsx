@@ -1,5 +1,6 @@
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import GroupAddIcon from '@mui/icons-material/GroupAdd';
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -21,6 +22,7 @@ import {
   canCloseMission,
   canDecideMission,
   canManageRequirements,
+  canMatchCrew,
   canModifyMission,
   canReplanMission,
   canStartMission,
@@ -262,11 +264,30 @@ export default function MissionDetailPage() {
         sx={{ justifyContent: 'space-between', alignItems: 'center', mb: 2 }}
       >
         <Typography variant="h2">Crew requirements</Typography>
-        {mayManageRequirements && (
-          <Button startIcon={<AddIcon />} onClick={() => setRequirementDialog({ open: true })}>
-            Add requirement
-          </Button>
-        )}
+        <Stack direction="row" spacing={1}>
+          {mayManageRequirements && (
+            <Button startIcon={<AddIcon />} onClick={() => setRequirementDialog({ open: true })}>
+              Add requirement
+            </Button>
+          )}
+          {canMatchCrew(user, mission) && (
+            <Button
+              component={Link}
+              to={`/missions/${missionId}/crew`}
+              startIcon={<GroupAddIcon />}
+              disabled={!hasRequirements}
+              // Disabled rather than hidden, like Submit and Start: with nothing to staff there is
+              // nobody to look for, and the reason is the useful part.
+              title={
+                hasRequirements
+                  ? undefined
+                  : 'Add a crew requirement before looking for people to fill it.'
+              }
+            >
+              Match crew
+            </Button>
+          )}
+        </Stack>
       </Stack>
 
       {mission.requirements.length === 0 ? (

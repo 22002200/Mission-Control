@@ -37,6 +37,7 @@ class MissionStaffingTest {
                 new DefaultListableBeanFactory().getBeanProvider(StaffingReadModel.class));
 
         assertThat(staffing.acceptedCounts(List.of(REQUIREMENT))).isEmpty();
+        assertThat(staffing.offeredCounts(List.of(REQUIREMENT))).isEmpty();
         assertThat(staffing.missionIdsAssignedTo(CREW, ORG)).isEmpty();
     }
 
@@ -53,6 +54,12 @@ class MissionStaffingTest {
             }
 
             @Override
+            public Map<UUID, Integer> offeredCountsByRequirement(
+                    java.util.Collection<UUID> requirementIds) {
+                return Map.of(REQUIREMENT, 1);
+            }
+
+            @Override
             public Set<UUID> missionIdsAssignedTo(UUID crewUserId, UUID organisationId) {
                 return Set.of(mission);
             }
@@ -62,6 +69,7 @@ class MissionStaffingTest {
                 new MissionStaffing(factory.getBeanProvider(StaffingReadModel.class));
 
         assertThat(staffing.acceptedCounts(List.of(REQUIREMENT))).containsEntry(REQUIREMENT, 3);
+        assertThat(staffing.offeredCounts(List.of(REQUIREMENT))).containsEntry(REQUIREMENT, 1);
         assertThat(staffing.missionIdsAssignedTo(CREW, ORG)).containsExactly(mission);
     }
 
@@ -76,7 +84,9 @@ class MissionStaffingTest {
                 new MissionStaffing(factory.getBeanProvider(StaffingReadModel.class));
 
         assertThat(staffing.acceptedCounts(List.of())).isEmpty();
+        assertThat(staffing.offeredCounts(List.of())).isEmpty();
         verify(readModel, never()).acceptedCountsByRequirement(anyCollection());
+        verify(readModel, never()).offeredCountsByRequirement(anyCollection());
     }
 
     @Test

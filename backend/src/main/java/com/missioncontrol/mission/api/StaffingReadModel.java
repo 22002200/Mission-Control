@@ -35,6 +35,21 @@ public interface StaffingReadModel {
     Map<UUID, Integer> acceptedCountsByRequirement(Collection<UUID> requirementIds);
 
     /**
+     * Outstanding offers per requirement.
+     *
+     * <p>Separate from the accepted counts above because the two mean different things. Accepted
+     * is what invariant M11 measures before a mission may start; offered plus accepted is what
+     * invariant A2 caps at {@code requiredCount}, and therefore what decides whether a seat is
+     * still worth suggesting anyone for. Reporting only one of them would make the other a guess.
+     *
+     * <p>Bulk for the same reason: feature 06 asks about every requirement on a mission at once.
+     *
+     * @return offered counts keyed by requirement id. A requirement nobody has been offered may be
+     *         absent rather than mapped to zero, so read it with a default.
+     */
+    Map<UUID, Integer> offeredCountsByRequirement(Collection<UUID> requirementIds);
+
+    /**
      * The missions a crew member holds an assignment on, in any state.
      *
      * <p>This is the whole of a crew member's mission visibility - FR-2. Offers count, not only

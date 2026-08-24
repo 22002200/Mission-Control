@@ -90,6 +90,7 @@ Capabilities in `product.md` deliberately not covered by any spec yet:
 
 | Capability | Source | Note |
 | --- | --- | --- |
+| Creating, editing and retiring skills | 03 FR-4 to FR-7 | Only the two GET endpoints are built. The catalogue is read-only and serves the skills seeded in 01. |
 | Crew members manage their own profile | §2 Crew Member | Crew profiles and skills are seeded in 01. Self-service editing needs its own spec. |
 | Directors manage organisation settings | §2 Director | `Organisation` has only a name; the spec never says what the settings are. |
 | Creating and managing users | implied by §2 | Everything is seeded in 01. No user-management API in v1. |

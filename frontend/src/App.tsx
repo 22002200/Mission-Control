@@ -1,6 +1,7 @@
 import { Navigate, Route, Routes } from 'react-router';
 import AppLayout from './components/AppLayout';
 import RequireAuth from './components/RequireAuth';
+import CrewMatchingPage from './pages/CrewMatchingPage';
 import LoginPage from './pages/LoginPage';
 import MissionDetailPage from './pages/MissionDetailPage';
 import MissionsPage from './pages/MissionsPage';
@@ -30,6 +31,9 @@ export default function App() {
       >
         <Route path="/missions" element={<MissionsPage />} />
         <Route path="/missions/:missionId" element={<MissionDetailPage />} />
+        {/* Staffing is its own screen rather than a section on the mission: a draft board with a
+            breakdown per candidate is a workspace, and it has to survive a refresh. */}
+        <Route path="/missions/:missionId/crew" element={<CrewMatchingPage />} />
       </Route>
 
       {/* Missions is the only destination, so anything else lands there rather than on a

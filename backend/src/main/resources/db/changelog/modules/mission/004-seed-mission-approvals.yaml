@@ -1,0 +1,55 @@
+# mission module - approval seed data
+#
+# Every seeded mission past PLAN gets the approval history it must have had to
+# get there, so the seed is a state the application itself could have produced.
+# Without this, a director opening the seeded PENDING_APPROVAL missions would
+# find a mission awaiting a decision with no cycle to decide - a state submit
+# can never create, and one the service deliberately refuses to paper over.
+#
+# Three missions get no cycle, and that is the point rather than an omission:
+# the two in PLAN were never submitted, and Io Survey was stood down from PLAN,
+# which is how a mission is aborted without ever having been proposed.
+#
+# Dates are anchored to the same 2026-01-05 09:00:00+00 the rest of the seed
+# uses, never now(): a seed whose meaning drifts with the wall clock cannot be
+# asserted against (feature 01, NFR-5). Decisions are stamped a day after their
+# submission so submitted_at and decided_at are visibly ordered on screen and
+# ck_mission_approval_order is exercised rather than assumed.
+databaseChangeLog:
+  - changeSet:
+      id: mission-seed-004-mission-approvals
+      author: mission-control
+      contextFilter: seed
+      comment: >-
+        One cycle per mission that has left planning. The PENDING rows are the
+        two missions a director can decide on first login; Rhea Descent carries a
+        real rejection reason, because a rejected plan that does not say why is
+        exactly what BR-6 exists to prevent and the UI has nothing to show
+        without one.
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO mission_approval (id, organisation_id, mission_id, submitted_by, submitted_at, decided_by, decided_at, decision, comment) VALUES
+                -- Orbital Dynamics. Director Vera Lindholm (a1..0001) decides; leads Marcus Reyes (a1..0002) and Priya Raman (a1..0003) submit.
+                -- Tethys Relay, PENDING_APPROVAL: open, awaiting Vera.
+                ('a6000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'a4000000-0000-0000-0000-000000000002', 'a1000000-0000-0000-0000-000000000002', '2026-01-05 09:00:00+00', NULL,                                   NULL,                      1, NULL),
+                -- Vesta Flyby, ACTIVE: approved before it could be started.
+                ('a6000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'a4000000-0000-0000-0000-000000000003', 'a1000000-0000-0000-0000-000000000002', '2026-01-05 09:00:00+00', 'a1000000-0000-0000-0000-000000000001', '2026-01-06 09:00:00+00', 2, 'Cleared. Imaging pass looks well within margin.'),
+                -- Helix Resupply, APPROVED: decided, not yet started.
+                ('a6000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'a4000000-0000-0000-0000-000000000005', 'a1000000-0000-0000-0000-000000000003', '2026-01-05 09:00:00+00', 'a1000000-0000-0000-0000-000000000001', '2026-01-06 09:00:00+00', 2, NULL),
+                -- Rhea Descent, REJECTED: the reason a lead has to act on.
+                ('a6000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001', 'a4000000-0000-0000-0000-000000000006', 'a1000000-0000-0000-0000-000000000003', '2026-01-05 09:00:00+00', 'a1000000-0000-0000-0000-000000000001', '2026-01-06 09:00:00+00', 3, 'The descent window overlaps the Vesta flyby and both need the same two EVA operators. Reshape the timeline and resubmit.'),
+                -- Kuiper Probe, CLOSED as COMPLETED: it ran, so it was approved.
+                ('a6000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000001', 'a4000000-0000-0000-0000-000000000007', 'a1000000-0000-0000-0000-000000000003', '2026-01-05 09:00:00+00', 'a1000000-0000-0000-0000-000000000001', '2026-01-06 09:00:00+00', 2, NULL),
+                -- Helios Aerospace. Director Tomas Eriksen (b1..0001); leads Sofia Mendes (b1..0002) and Daniel Okafor (b1..0003).
+                -- Perihelion Watch, APPROVED.
+                ('b6000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000002', 'b1000000-0000-0000-0000-000000000002', '2026-01-05 09:00:00+00', 'b1000000-0000-0000-0000-000000000001', '2026-01-06 09:00:00+00', 2, NULL),
+                -- Meridian Uplink, PENDING_APPROVAL: open, awaiting Tomas.
+                ('b6000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000003', 'b1000000-0000-0000-0000-000000000003', '2026-01-05 09:00:00+00', NULL,                                   NULL,                      1, NULL),
+                -- Zenith Station Run, ACTIVE.
+                ('b6000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000004', 'b1000000-0000-0000-0000-000000000003', '2026-01-05 09:00:00+00', 'b1000000-0000-0000-0000-000000000001', '2026-01-06 09:00:00+00', 2, 'Approved. Keep the consumables manifest under review.'),
+                -- Halcyon Trial, CLOSED as COMPLETED.
+                ('b6000000-0000-0000-0000-000000000004', 'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000005', 'b1000000-0000-0000-0000-000000000003', '2026-01-05 09:00:00+00', 'b1000000-0000-0000-0000-000000000001', '2026-01-06 09:00:00+00', 2, NULL);
+      rollback:
+        - sql:
+            sql: DELETE FROM mission_approval WHERE organisation_id IN ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001')

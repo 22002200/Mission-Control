@@ -1,11 +1,6 @@
 package com.missioncontrol.mission.internal;
 
-import com.missioncontrol.identity.api.UserDirectory;
-import com.missioncontrol.identity.api.UserSummary;
 import com.missioncontrol.platform.CurrentUser;
-import com.missioncontrol.shared.UserRole;
-import com.missioncontrol.skill.api.SkillCatalogue;
-import com.missioncontrol.skill.api.SkillSummary;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.Collection;
@@ -16,8 +11,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -32,10 +25,14 @@ import org.springframework.transaction.annotation.Transactional;
  * method here takes one as an argument, so a controller has no way to pass the wrong one. That is
  * invariant T1 made structural rather than remembered.
  *
- * <p>Reads are assembled from three bulk lookups rather than one query per row: skill names from
- * {@code skill}, lead names from {@code identity}, and staffing from whatever implements the
- * assignment read model. NFR-1 is why all three are bulk and why none of them lives inside the
- * mapper, where a per-row call would be the easy thing to write.
+ * <p>Responses are built by {@link MissionDetailAssembler}, which owns the three bulk lookups
+ * every mission read needs. Feature 05's approval commands answer with the same detail, and one
+ * assembler shared between them is what stops a second, per-row copy appearing.
+ *
+ * <p><strong>Every command here loads through {@link MissionLoader#visibleForUpdate}</strong>, not
+ * just the approval ones next door. Dirty checking writes {@code set status = ?} with no status
+ * predicate, so a close that read a stale status would block on the winner's lock and then
+ * overwrite it. The lock only works if nobody opts out of it.
  */
 @Service
 class MissionService {
@@ -49,25 +46,28 @@ class MissionService {
     private static final Set<MissionStatus> ALL_STATUSES = EnumSet.allOf(MissionStatus.class);
 
     private final MissionRepository missions;
+    private final MissionLoader loader;
     private final MissionAccess access;
     private final MissionStaffing staffing;
-    private final SkillCatalogue skills;
-    private final UserDirectory users;
+    private final MissionApprovals approvals;
+    private final MissionDetailAssembler assembler;
     private final CurrentUser currentUser;
     private final Clock clock;
 
     MissionService(MissionRepository missions,
+                   MissionLoader loader,
                    MissionAccess access,
                    MissionStaffing staffing,
-                   SkillCatalogue skills,
-                   UserDirectory users,
+                   MissionApprovals approvals,
+                   MissionDetailAssembler assembler,
                    CurrentUser currentUser,
                    Clock clock) {
         this.missions = missions;
+        this.loader = loader;
         this.access = access;
         this.staffing = staffing;
-        this.skills = skills;
-        this.users = users;
+        this.approvals = approvals;
+        this.assembler = assembler;
         this.currentUser = currentUser;
         this.clock = clock;
     }
@@ -88,12 +88,12 @@ class MissionService {
             case CREW_MEMBER -> assignedPage(organisationId, wanted, namePattern, pageable);
         };
 
-        return MissionPage.from(found.map(summariser(found.getContent())));
+        return assembler.page(found);
     }
 
     @Transactional(readOnly = true)
     MissionResponse get(UUID id) {
-        return toDetail(requireVisible(id));
+        return assembler.detail(loader.visibleDetail(id));
     }
 
     @Transactional
@@ -118,12 +118,12 @@ class MissionService {
                 .updatedAt(now)
                 .build();
 
-        return toDetail(missions.save(mission));
+        return assembler.detail(missions.save(mission));
     }
 
     @Transactional
     MissionResponse update(UUID id, UpdateMissionRequest request) {
-        MissionEntity mission = requireVisible(id);
+        MissionEntity mission = loader.visibleForUpdate(id);
         access.requireCanModify(mission);
         requireNotClosed(mission);
 
@@ -139,46 +139,35 @@ class MissionService {
                 request.endsAt(),
                 clock.instant());
 
-        return toDetail(mission);
+        return assembler.detail(mission);
     }
 
     @Transactional
     MissionResponse start(UUID id) {
-        MissionEntity mission = requireVisible(id);
+        MissionEntity mission = loader.visibleForUpdate(id);
         access.requireCanModify(mission);
         requireTransition(mission, MissionStatus.ACTIVE);
         requireFullyStaffed(mission);
 
         mission.start(clock.instant());
-        return toDetail(mission);
+        return assembler.detail(mission);
     }
 
     @Transactional
     MissionResponse close(UUID id, CloseMissionRequest request) {
-        MissionEntity mission = requireVisible(id);
+        MissionEntity mission = loader.visibleForUpdate(id);
         access.requireCanModify(mission);
         requireTransition(mission, MissionStatus.CLOSED);
 
-        mission.close(closeReasonFor(mission, request.closeReason()), request.comment(),
-                clock.instant());
-        return toDetail(mission);
-    }
+        Instant now = clock.instant();
+        // Before the status moves, while it still says whether a cycle can be open. Closing a
+        // mission that was awaiting a decision settles that cycle as CANCELLED rather than leaving
+        // it PENDING for a mission nobody will ever decide - and holding M8's unique index for a
+        // resubmission that can never come.
+        approvals.cancelOpen(mission, currentUser.userId(), request.comment(), now);
 
-    /**
-     * Loads a mission the caller is allowed to see, or reports it as absent.
-     *
-     * <p>Both halves answer 404: a mission in another organisation never comes back from the
-     * query, and one the caller has no visibility of is refused by {@link MissionAccess}. That
-     * leaves 403 for the caller who genuinely can see the mission but may not change it - a crew
-     * member on the crew of a mission they do not lead.
-     */
-    private MissionEntity requireVisible(UUID id) {
-        MissionEntity mission = missions
-                .findDetailByIdAndOrganisationId(id, currentUser.organisationId())
-                .orElseThrow(MissionNotFoundException::new);
-
-        access.requireVisible(mission);
-        return mission;
+        mission.close(closeReasonFor(mission, request.closeReason()), request.comment(), now);
+        return assembler.detail(mission);
     }
 
     private Page<MissionEntity> assignedPage(UUID organisationId,
@@ -191,66 +180,6 @@ class MissionService {
             return new PageImpl<>(List.of(), pageable, 0);
         }
         return missions.findAssigned(organisationId, assigned, statuses, namePattern, pageable);
-    }
-
-    /**
-     * Builds the summariser for one page, having already resolved every lookup that page needs.
-     *
-     * <p>Three queries for the whole page rather than three per row: the requirement totals, the
-     * staffing counts keyed on those requirements, and the lead names. That is NFR-1, and it is
-     * why this returns a function instead of being called per mission.
-     */
-    private Function<MissionEntity, MissionSummaryResponse> summariser(List<MissionEntity> page) {
-        List<UUID> missionIds = page.stream().map(MissionEntity::getId).toList();
-        if (missionIds.isEmpty()) {
-            return mission -> MissionMapper.toSummary(mission, Map.of(), 0, 0);
-        }
-
-        List<RequirementTotals> totals = missions.findRequirementTotals(missionIds);
-        Map<UUID, Integer> accepted = staffing.acceptedCounts(
-                totals.stream().map(RequirementTotals::requirementId).toList());
-
-        Map<UUID, Integer> requiredByMission = totals.stream().collect(Collectors.groupingBy(
-                RequirementTotals::missionId,
-                Collectors.summingInt(RequirementTotals::requiredCount)));
-
-        // Each line contributes at most what it asked for, so an over-filled requirement cannot
-        // mask a short one in the mission total. Two lines of two, with four acceptances all on
-        // the first, must not read as fully staffed.
-        Map<UUID, Integer> acceptedByMission = totals.stream().collect(Collectors.groupingBy(
-                RequirementTotals::missionId,
-                Collectors.summingInt(total -> Math.min(
-                        accepted.getOrDefault(total.requirementId(), 0), total.requiredCount()))));
-
-        Map<UUID, UserSummary> leads = users.findByIds(
-                page.stream().map(MissionEntity::getMissionLeadId).distinct().toList(),
-                currentUser.organisationId());
-
-        return mission -> MissionMapper.toSummary(
-                mission,
-                leads,
-                requiredByMission.getOrDefault(mission.getId(), 0),
-                acceptedByMission.getOrDefault(mission.getId(), 0));
-    }
-
-    private MissionResponse toDetail(MissionEntity mission) {
-        List<UUID> requirementIds = mission.getRequirements().stream()
-                .map(CrewRequirementEntity::getId)
-                .toList();
-
-        List<UUID> skillIds = mission.getRequirements().stream()
-                .flatMap(requirement -> requirement.getRequiredSkills().stream())
-                .map(RequiredSkillEntity::skillId)
-                .distinct()
-                .toList();
-
-        Map<UUID, SkillSummary> skillNames =
-                skills.findByIds(skillIds, mission.getOrganisationId());
-        Map<UUID, UserSummary> leadNames =
-                users.findByIds(List.of(mission.getMissionLeadId()), mission.getOrganisationId());
-
-        return MissionMapper.toResponse(mission, skillNames, leadNames,
-                staffing.acceptedCounts(requirementIds));
     }
 
     /**

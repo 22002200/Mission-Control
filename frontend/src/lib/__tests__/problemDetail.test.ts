@@ -78,7 +78,7 @@ describe('messageForProblem', () => {
   it('does not reveal whether a mission exists when it cannot be seen', () => {
     const message = messageForProblem({ type: 'urn:mission-control:not-found' });
 
-    expect(message).toBe('That mission no longer exists, or you no longer have access to it.');
+    expect(message).toBe('This mission does not exist, or you do not have access to it.');
   });
 
   it('reads the message off a plain Error, which is what a network failure looks like', () => {

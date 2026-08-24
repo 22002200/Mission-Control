@@ -127,6 +127,48 @@ class MissionEntity {
         this.updatedAt = now;
     }
 
+    /**
+     * {@code PLAN} to {@code PENDING_APPROVAL} - feature 05, FR-1.
+     *
+     * <p>The requirement that a mission have something to staff before it can be submitted (M12)
+     * is the service's check, not this one, for the same reason the transition table is
+     * {@link MissionStatus}'s: this type's job is applying a change consistently once it has been
+     * permitted.
+     */
+    void submit(Instant now) {
+        this.status = MissionStatus.PENDING_APPROVAL;
+        this.updatedAt = now;
+    }
+
+    /** {@code PENDING_APPROVAL} to {@code APPROVED} - FR-2. Who decided is on the approval cycle. */
+    void approve(Instant now) {
+        this.status = MissionStatus.APPROVED;
+        this.updatedAt = now;
+    }
+
+    /**
+     * {@code PENDING_APPROVAL} to {@code REJECTED} - FR-3.
+     *
+     * <p>The reason is not stored here. {@code closeComment} belongs to closing, and BR-9 needs
+     * every rejection kept rather than the most recent one overwriting its predecessor - which is
+     * the whole reason {@code MissionApproval} is a row per cycle.
+     */
+    void reject(Instant now) {
+        this.status = MissionStatus.REJECTED;
+        this.updatedAt = now;
+    }
+
+    /**
+     * {@code REJECTED} back to {@code PLAN} - FR-4.
+     *
+     * <p>Nothing is unwound. BR-9 leaves the approval history intact and the next submission opens
+     * a new cycle, so the record of what was rejected and why survives the second attempt.
+     */
+    void replan(Instant now) {
+        this.status = MissionStatus.PLAN;
+        this.updatedAt = now;
+    }
+
     /** {@code APPROVED} to {@code ACTIVE}. The staffing check that guards this is the service's. */
     void start(Instant now) {
         this.status = MissionStatus.ACTIVE;

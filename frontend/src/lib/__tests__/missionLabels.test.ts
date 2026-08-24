@@ -1,10 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  APPROVAL_DECISION_LABELS,
   MISSION_SECTIONS,
   STATUS_LABELS,
+  decisionColour,
+  decisionLabel,
   formatRole,
   initials,
   sectionFor,
+  sectionsForRole,
   statusColour,
   statusLabel,
   type MissionStatus,
@@ -13,13 +17,38 @@ import {
 const ALL_STATUSES = Object.keys(STATUS_LABELS) as MissionStatus[];
 
 describe('mission sections', () => {
-  it('covers every status exactly once', () => {
-    // The guard that matters. A status belonging to no section would vanish from the board
-    // silently, and one belonging to two would show the same mission twice.
-    const covered = MISSION_SECTIONS.flatMap((section) => section.statuses);
+  // The guard that matters, and it has to hold for both groupings now that a director's board
+  // differs from everyone else's. A status belonging to no section would vanish from the board
+  // silently, and one belonging to two would show the same mission twice - counted twice, and paged
+  // independently in each.
+  it.each([
+    ['everyone', sectionsForRole('MISSION_LEAD')],
+    ['a director', sectionsForRole('DIRECTOR')],
+    ['a signed-out user', sectionsForRole(undefined)],
+  ])('covers every status exactly once for %s', (_who, sections) => {
+    const covered = sections.flatMap((section) => section.statuses);
 
     expect([...covered].sort()).toEqual([...ALL_STATUSES].sort());
     expect(new Set(covered).size).toBe(covered.length);
+  });
+
+  it('lifts the decisions waiting on a director out of Draft', () => {
+    const sections = sectionsForRole('DIRECTOR');
+
+    expect(sections.map((section) => section.key)).toEqual([
+      'awaiting',
+      'draft',
+      'active',
+      'completed',
+    ]);
+    expect(sectionFor('PENDING_APPROVAL', sections).key).toBe('awaiting');
+    // Moved, not copied.
+    expect(sections[1]!.statuses).not.toContain('PENDING_APPROVAL');
+  });
+
+  it('leaves a lead and a crew member the original three sections', () => {
+    expect(sectionsForRole('MISSION_LEAD')).toBe(MISSION_SECTIONS);
+    expect(sectionsForRole('CREW_MEMBER')).toBe(MISSION_SECTIONS);
   });
 
   it('puts rejected missions in Draft, because they still need a decision', () => {
@@ -35,7 +64,7 @@ describe('mission sections', () => {
   });
 
   it('gives every section something to say when it is empty', () => {
-    MISSION_SECTIONS.forEach((section) => {
+    [...MISSION_SECTIONS, ...sectionsForRole('DIRECTOR')].forEach((section) => {
       expect(section.emptyMessage).not.toHaveLength(0);
     });
   });
@@ -81,5 +110,28 @@ describe('display helpers', () => {
     expect(initials('Marcus Reyes')).toBe('MR');
     expect(initials('Vera')).toBe('V');
     expect(initials('  ')).toBe('?');
+  });
+});
+
+describe('approval decisions', () => {
+  it('names every decision the API can return', () => {
+    expect(Object.keys(APPROVAL_DECISION_LABELS).sort()).toEqual([
+      'APPROVED',
+      'CANCELLED',
+      'PENDING',
+      'REJECTED',
+    ]);
+  });
+
+  it('reads a pending cycle as waiting rather than as a decision', () => {
+    expect(decisionLabel('PENDING')).toBe('Awaiting a decision');
+  });
+
+  it('does not colour a cancelled cycle like a rejection', () => {
+    // Nobody rejected the plan - the mission was closed while the cycle was still open - so
+    // colouring it red would say something untrue about why it ended.
+    expect(decisionColour('REJECTED')).toBe('error');
+    expect(decisionColour('CANCELLED')).toBe('default');
+    expect(decisionColour('APPROVED')).toBe('success');
   });
 });

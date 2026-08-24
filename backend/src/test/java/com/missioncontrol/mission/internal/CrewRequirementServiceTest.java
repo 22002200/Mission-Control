@@ -7,6 +7,7 @@ import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.when;
 
+import com.missioncontrol.identity.api.UserDirectory;
 import com.missioncontrol.mission.api.StaffingReadModel;
 import com.missioncontrol.platform.CurrentUser;
 import com.missioncontrol.shared.UserRole;
@@ -46,8 +47,8 @@ class CrewRequirementServiceTest {
     private static final Instant NOW = Instant.parse("2026-06-01T10:00:00Z");
 
     @Mock private MissionRepository missions;
-    @Mock private CrewRequirementRepository requirementRepository;
     @Mock private SkillCatalogue skills;
+    @Mock private UserDirectory users;
     @Mock private CurrentUser currentUser;
     @Mock private ObjectProvider<StaffingReadModel> staffingProvider;
 
@@ -60,6 +61,11 @@ class CrewRequirementServiceTest {
         lenient().when(currentUser.userId()).thenReturn(LEAD);
         lenient().when(currentUser.role()).thenReturn(UserRole.MISSION_LEAD);
         lenient().when(missions.save(any())).thenAnswer(call -> call.getArgument(0));
+        // The loader locks the bare row before reading the detail, so the two finders have to
+        // agree. Delegating rather than stubbing twice means a test that arranges a mission gets
+        // one that can be commanded as well as read.
+        lenient().when(missions.lockByIdAndOrganisationId(any(), any())).thenAnswer(call ->
+                missions.findDetailByIdAndOrganisationId(call.getArgument(0), call.getArgument(1)));
         lenient().when(skills.findByIds(anyCollection(), any())).thenAnswer(call -> {
             Collection<UUID> asked = call.getArgument(0);
             return asked.stream()
@@ -70,13 +76,13 @@ class CrewRequirementServiceTest {
         });
 
         MissionStaffing staffing = new MissionStaffing(staffingProvider);
+        MissionAccess access = new MissionAccess(currentUser, staffing);
         service = new CrewRequirementService(
                 missions,
-                requirementRepository,
-                new MissionAccess(currentUser, staffing),
-                staffing,
+                new MissionLoader(missions, access, currentUser),
+                access,
+                new MissionDetailAssembler(missions, staffing, skills, users, currentUser),
                 skills,
-                currentUser,
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 

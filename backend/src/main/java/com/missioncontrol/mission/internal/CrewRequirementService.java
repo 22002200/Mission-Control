@@ -1,6 +1,5 @@
 package com.missioncontrol.mission.internal;
 
-import com.missioncontrol.platform.CurrentUser;
 import com.missioncontrol.skill.api.SkillCatalogue;
 import com.missioncontrol.skill.api.SkillSummary;
 import java.time.Clock;
@@ -29,26 +28,23 @@ import org.springframework.transaction.annotation.Transactional;
 class CrewRequirementService {
 
     private final MissionRepository missions;
-    private final CrewRequirementRepository requirements;
+    private final MissionLoader loader;
     private final MissionAccess access;
-    private final MissionStaffing staffing;
+    private final MissionDetailAssembler assembler;
     private final SkillCatalogue skills;
-    private final CurrentUser currentUser;
     private final Clock clock;
 
     CrewRequirementService(MissionRepository missions,
-                           CrewRequirementRepository requirements,
+                           MissionLoader loader,
                            MissionAccess access,
-                           MissionStaffing staffing,
+                           MissionDetailAssembler assembler,
                            SkillCatalogue skills,
-                           CurrentUser currentUser,
                            Clock clock) {
         this.missions = missions;
-        this.requirements = requirements;
+        this.loader = loader;
         this.access = access;
-        this.staffing = staffing;
+        this.assembler = assembler;
         this.skills = skills;
-        this.currentUser = currentUser;
         this.clock = clock;
     }
 
@@ -72,7 +68,7 @@ class CrewRequirementService {
         mission.addRequirement(requirement, clock.instant());
         missions.save(mission);
 
-        return toResponse(requirement, mission.getOrganisationId());
+        return assembler.requirement(requirement, mission.getOrganisationId());
     }
 
     @Transactional
@@ -88,7 +84,7 @@ class CrewRequirementService {
                 buildSkills(request, mission.getOrganisationId()));
         mission.touch(clock.instant());
 
-        return toResponse(requirement, mission.getOrganisationId());
+        return assembler.requirement(requirement, mission.getOrganisationId());
     }
 
     @Transactional
@@ -110,11 +106,9 @@ class CrewRequirementService {
      * <p>Asking about state before ownership would leak in the same way, one step further in.
      */
     private MissionEntity requireEditableMission(UUID missionId) {
-        MissionEntity mission = missions
-                .findDetailByIdAndOrganisationId(missionId, currentUser.organisationId())
-                .orElseThrow(MissionNotFoundException::new);
-
-        access.requireVisible(mission);
+        // Locked, like every other command: adding or removing a requirement is what M12 is
+        // checked against at submission time, so the two must not interleave.
+        MissionEntity mission = loader.visibleForUpdate(missionId);
         access.requireIsOwner(mission);
 
         // BR-10. Changing what crew a mission needs after it has been approved would invalidate
@@ -178,17 +172,5 @@ class CrewRequirementService {
                         .weight(skill.weightOrDefault())
                         .build())
                 .toList();
-    }
-
-    private CrewRequirementResponse toResponse(CrewRequirementEntity requirement,
-                                               UUID organisationId) {
-        List<UUID> skillIds = requirement.getRequiredSkills().stream()
-                .map(RequiredSkillEntity::skillId)
-                .toList();
-
-        return MissionMapper.toResponse(
-                requirement,
-                skills.findByIds(skillIds, organisationId),
-                staffing.acceptedCounts(List.of(requirement.getId())));
     }
 }

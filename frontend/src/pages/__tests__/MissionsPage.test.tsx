@@ -103,7 +103,7 @@ describe('MissionsPage', () => {
     respondWith([]);
   });
 
-  it('shows all three lifecycle sections', async () => {
+  it('shows every lifecycle section', async () => {
     renderBoard(DIRECTOR);
 
     expect(await screen.findByRole('heading', { name: 'Draft' })).toBeInTheDocument();
@@ -111,15 +111,44 @@ describe('MissionsPage', () => {
     expect(screen.getByRole('heading', { name: 'Completed' })).toBeInTheDocument();
   });
 
+  it('gives a director their own queue of decisions to make', async () => {
+    // FR-8. Directors have to be able to find the missions waiting on them, and two of those buried
+    // among everything else still in planning is how a queue goes unnoticed.
+    renderBoard(DIRECTOR);
+
+    expect(
+      await screen.findByRole('heading', { name: 'Awaiting approval' }),
+    ).toBeInTheDocument();
+  });
+
+  it('does not show a mission lead an approval queue they cannot act on', async () => {
+    renderBoard(LEAD);
+
+    expect(await screen.findByRole('heading', { name: 'Draft' })).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Awaiting approval' })).not.toBeInTheDocument();
+  });
+
   it('asks each section only for the statuses it owns', async () => {
     renderBoard(DIRECTOR);
+
+    await waitFor(() => expect(listMissions).toHaveBeenCalledTimes(4));
+
+    const requested = vi.mocked(listMissions).mock.calls.map((call) => call[0]?.query?.status);
+    // PENDING_APPROVAL is moved out of Draft rather than duplicated: a mission in two sections
+    // would be counted twice and paged independently in each.
+    expect(requested).toContainEqual(['PENDING_APPROVAL']);
+    expect(requested).toContainEqual(['PLAN', 'APPROVED', 'REJECTED']);
+    expect(requested).toContainEqual(['ACTIVE']);
+    expect(requested).toContainEqual(['CLOSED']);
+  });
+
+  it('leaves a mission lead the original three sections', async () => {
+    renderBoard(LEAD);
 
     await waitFor(() => expect(listMissions).toHaveBeenCalledTimes(3));
 
     const requested = vi.mocked(listMissions).mock.calls.map((call) => call[0]?.query?.status);
     expect(requested).toContainEqual(['PLAN', 'PENDING_APPROVAL', 'APPROVED', 'REJECTED']);
-    expect(requested).toContainEqual(['ACTIVE']);
-    expect(requested).toContainEqual(['CLOSED']);
   });
 
   it('keeps an empty section visible and says it is empty', async () => {

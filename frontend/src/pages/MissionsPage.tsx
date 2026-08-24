@@ -13,7 +13,7 @@ import { canCreateMission } from '../auth/permissions';
 import MissionFormDialog from '../components/missions/MissionFormDialog';
 import MissionSection from '../components/missions/MissionSection';
 import {
-  MISSION_SECTIONS,
+  sectionsForRole,
   STATUS_LABELS,
   sectionFor,
   type MissionStatus,
@@ -69,14 +69,20 @@ export default function MissionsPage() {
     );
   }, [debouncedSearch, setSearchParams]);
 
+  // A director gets a fourth section for the decisions waiting on them - FR-8. Everyone else keeps
+  // the original three.
+  const roleSections = useMemo(() => sectionsForRole(user?.role), [user?.role]);
+
   const visibleSections = useMemo(() => {
-    if (statusParam === ALL_STATUSES) return MISSION_SECTIONS;
+    if (statusParam === ALL_STATUSES) return roleSections;
 
     const status = statusParam as MissionStatus;
-    const owning = sectionFor(status);
+    // Resolved against the sections actually being rendered, so a filtered view keeps the heading
+    // the unfiltered board would have given it.
+    const owning = sectionFor(status, roleSections);
     // Keep the section's identity and heading, but narrow it to the one status asked for.
     return [{ ...owning, statuses: [status] as readonly MissionStatus[] }];
-  }, [statusParam]);
+  }, [statusParam, roleSections]);
 
   function changeStatus(next: string) {
     setSearchParams(

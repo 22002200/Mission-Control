@@ -12,20 +12,28 @@ import { Link, useParams } from 'react-router';
 import {
   deleteRequirementMutation,
   getMissionOptions,
+  replanMissionMutation,
   startMissionMutation,
+  submitMissionMutation,
 } from '../api/generated/@tanstack/react-query.gen';
 import type { CrewRequirementResponse } from '../api/generated/types.gen';
 import {
   canCloseMission,
+  canDecideMission,
   canManageRequirements,
   canModifyMission,
+  canReplanMission,
   canStartMission,
+  canSubmitForApproval,
 } from '../auth/permissions';
 import { useAuth } from '../auth/useAuth';
+import ApprovalHistory from '../components/missions/ApprovalHistory';
+import ApproveMissionDialog from '../components/missions/ApproveMissionDialog';
 import CloseMissionDialog from '../components/missions/CloseMissionDialog';
 import MissionFormDialog from '../components/missions/MissionFormDialog';
 import MissionStatusChip from '../components/missions/MissionStatusChip';
 import RequirementCard from '../components/missions/RequirementCard';
+import RejectMissionDialog from '../components/missions/RejectMissionDialog';
 import RequirementFormDialog from '../components/missions/RequirementFormDialog';
 import { formatDateTime } from '../lib/datetime';
 import { CLOSE_REASON_LABELS } from '../lib/missionLabels';
@@ -35,9 +43,13 @@ import { messageForProblem } from '../lib/problemDetail';
  * One mission, and everything that can be done to it in this feature.
  *
  * The actions on offer are decided by `auth/permissions`, which mirrors the invariants the server
- * enforces. Anything the caller may not do is hidden rather than disabled, with one exception:
- * Start stays visible and disabled on an approved mission that is not yet crewed, because
- * 'why can I not start this' is the question this screen exists to answer.
+ * enforces. Anything the caller may not do is hidden rather than disabled, with two exceptions:
+ * Start stays visible and disabled on an approved mission that is not yet crewed, and Submit does
+ * the same on a mission with no crew requirements. In both cases 'why can I not do this' is the
+ * question this screen exists to answer, and an absent button does not answer it.
+ *
+ * This is also where feature 05's roles divide. A lead sees Submit and Return to plan; a director
+ * sees Approve and Reject. Nobody sees both, because nobody can do both.
  */
 export default function MissionDetailPage() {
   const { missionId = '' } = useParams();
@@ -46,6 +58,8 @@ export default function MissionDetailPage() {
 
   const [editing, setEditing] = useState(false);
   const [closing, setClosing] = useState(false);
+  const [approving, setApproving] = useState(false);
+  const [rejecting, setRejecting] = useState(false);
   const [requirementDialog, setRequirementDialog] = useState<
     { open: false } | { open: true; requirement?: CrewRequirementResponse }
   >({ open: false });
@@ -58,6 +72,8 @@ export default function MissionDetailPage() {
   } = useQuery(getMissionOptions({ path: { id: missionId } }));
 
   const start = useMutation(startMissionMutation());
+  const submit = useMutation(submitMissionMutation());
+  const replan = useMutation(replanMissionMutation());
   const removeRequirement = useMutation(deleteRequirementMutation());
 
   if (isPending) {
@@ -80,10 +96,17 @@ export default function MissionDetailPage() {
   const mayEdit = canModifyMission(user, mission);
   const mayManageRequirements = canManageRequirements(user, mission);
   const mayStart = canStartMission(user, mission);
+  const maySubmit = canSubmitForApproval(user, mission);
+  const mayDecide = canDecideMission(user, mission);
+  const mayReplan = canReplanMission(user, mission);
+  // M12: the server refuses a mission with nothing to staff, so the button says why rather than
+  // vanishing or failing.
+  const hasRequirements = mission.requirements.length > 0;
 
   async function refresh() {
     await queryClient.invalidateQueries({ queryKey: [{ _id: 'getMission' }] });
     await queryClient.invalidateQueries({ queryKey: [{ _id: 'listMissions' }] });
+    await queryClient.invalidateQueries({ queryKey: [{ _id: 'listMissionApprovals' }] });
   }
 
   async function handleStart() {
@@ -93,6 +116,26 @@ export default function MissionDetailPage() {
       await refresh();
     } catch (caught) {
       setActionError(messageForProblem(caught, 'Could not start the mission.'));
+    }
+  }
+
+  async function handleSubmit() {
+    setActionError(null);
+    try {
+      await submit.mutateAsync({ path: { id: missionId } });
+      await refresh();
+    } catch (caught) {
+      setActionError(messageForProblem(caught, 'Could not submit the mission for approval.'));
+    }
+  }
+
+  async function handleReplan() {
+    setActionError(null);
+    try {
+      await replan.mutateAsync({ path: { id: missionId } });
+      await refresh();
+    } catch (caught) {
+      setActionError(messageForProblem(caught, 'Could not return the mission to planning.'));
     }
   }
 
@@ -133,6 +176,36 @@ export default function MissionDetailPage() {
 
         <Stack direction="row" spacing={1} sx={{ flexShrink: 0 }}>
           {mayEdit && <Button onClick={() => setEditing(true)}>Edit</Button>}
+          {mayReplan && (
+            <Button onClick={handleReplan} disabled={replan.isPending}>
+              {replan.isPending ? 'Returning…' : 'Return to plan'}
+            </Button>
+          )}
+          {maySubmit && (
+            <Button
+              variant="contained"
+              onClick={handleSubmit}
+              disabled={!hasRequirements || submit.isPending}
+              // Disabled rather than hidden, like Start: the reason is the useful part.
+              title={
+                hasRequirements
+                  ? undefined
+                  : 'Add at least one crew requirement before submitting for approval.'
+              }
+            >
+              {submit.isPending ? 'Submitting…' : 'Submit for approval'}
+            </Button>
+          )}
+          {mayDecide && (
+            <Button color="error" onClick={() => setRejecting(true)}>
+              Reject
+            </Button>
+          )}
+          {mayDecide && (
+            <Button variant="contained" onClick={() => setApproving(true)}>
+              Approve
+            </Button>
+          )}
           {mayStart && (
             <Button
               variant="contained"
@@ -216,7 +289,21 @@ export default function MissionDetailPage() {
         </Stack>
       )}
 
+      <ApprovalHistory missionId={missionId} mission={mission} />
+
       <MissionFormDialog open={editing} mission={mission} onClose={() => setEditing(false)} />
+
+      <ApproveMissionDialog
+        open={approving}
+        mission={mission}
+        onClose={() => setApproving(false)}
+      />
+
+      <RejectMissionDialog
+        open={rejecting}
+        mission={mission}
+        onClose={() => setRejecting(false)}
+      />
 
       <CloseMissionDialog open={closing} mission={mission} onClose={() => setClosing(false)} />
 

@@ -4,8 +4,8 @@ A web application for planning space missions and assigning crew to them, built 
 **modular monolith**.
 
 Three domain modules are built: `identity` (logging in), `skill` (the org-scoped catalogue, reads
-only) and `mission` (planning missions and the crew they call for). Approval, matching, crew
-assignment and the dashboards are specified but not yet built — see
+only) and `mission` (planning missions, the crew they call for, and getting them approved).
+Matching, crew assignment and the dashboards are specified but not yet built — see
 [`docs/features/`](docs/features/README.md) for the build order.
 
 See [`docs/architecture.md`](docs/architecture.md) for the module rules and the checklist for
@@ -148,8 +148,9 @@ Two things worth knowing:
 ## Missions
 
 Mission Leads plan missions and describe the crew they need; Directors oversee every mission in
-their organisation. Approval, matching and crew assignment come later - see
-[`docs/features/04-mission-management.md`](docs/features/04-mission-management.md).
+their organisation and decide whether a plan goes ahead. Matching and crew assignment come later -
+see [`docs/features/04-mission-management.md`](docs/features/04-mission-management.md) and
+[`docs/features/05-mission-approval.md`](docs/features/05-mission-approval.md).
 
 | Method | Path | Role | Purpose |
 | --- | --- | --- | --- |
@@ -162,6 +163,11 @@ their organisation. Approval, matching and crew assignment come later - see
 | POST | `/api/missions/{id}/requirements` | owner | Add a staffing line |
 | PATCH | `/api/missions/{id}/requirements/{reqId}` | owner | Replace one, skills included |
 | DELETE | `/api/missions/{id}/requirements/{reqId}` | owner | Remove one |
+| POST | `/api/missions/{id}/submit` | owner | `PLAN` to `PENDING_APPROVAL` |
+| POST | `/api/missions/{id}/approve` | DIRECTOR | `PENDING_APPROVAL` to `APPROVED` |
+| POST | `/api/missions/{id}/reject` | DIRECTOR | `PENDING_APPROVAL` to `REJECTED`, with a reason |
+| POST | `/api/missions/{id}/replan` | owner | `REJECTED` back to `PLAN` |
+| GET | `/api/missions/{id}/approvals` | any with visibility | Every decision cycle, newest first |
 
 `GET /api/missions` takes `status` (**repeatable** - `?status=PLAN&status=APPROVED`), `search`,
 `page` and `size` (default 20, maximum 100). It is sorted by start date.
@@ -181,7 +187,37 @@ Four things worth knowing:
   plan that no longer exists, so it has to be resubmitted. The UI warns before you save.
 - **`POST /start` always fails right now**, and that is correct rather than broken. Staffing counts
   come from the assignment module, which does not exist until feature 07, so no mission reads as
-  crewed. It is moot in any case: nothing can reach `APPROVED` before feature 05.
+  crewed. A mission can now legitimately reach `APPROVED`, so this is the one step still missing.
+
+### Approval
+
+A Mission Lead submits a plan; a Director approves or rejects it; a rejected plan is revised and
+resubmitted, or abandoned. This is the only place in the product where the roles genuinely divide -
+and because a Director cannot own a mission, a Director can never approve their own work.
+
+```bash
+curl -s -X POST "localhost:8080/api/missions/$ID/reject" -H "Authorization: Bearer $TOKEN"   -H 'Content-Type: application/json' -d '{"comment":"The window clashes with the Vesta flyby."}'
+```
+
+Four things worth knowing:
+
+- **A plan needs someone to staff.** Submitting a mission with no crew requirements is refused: an
+  empty mission is vacuously fully crewed, and would otherwise be startable the moment it was
+  approved.
+- **A rejection must say why.** The comment is required, in the API, in the UI and as a database
+  constraint. A rejected plan that does not say what to fix is not actionable.
+- **Every submit-and-decide cycle is kept.** Sending a plan back and resubmitting it opens a *new*
+  cycle rather than overwriting the old one, so `GET /approvals` is the full history. Returning a
+  rejected mission to planning changes nothing already recorded.
+- **Two directors deciding at once produce one decision.** The second gets `409` carrying
+  `currentStatus`, so a client can tell a stale screen from a mistake. That holds because every
+  command takes a write lock on the mission row - including `close`, which would otherwise commit
+  over a decision it had read before the other caller made it.
+
+In the UI a Director's board gains an **Awaiting approval** section holding just the missions
+waiting on them, and the mission page grows Submit / Approve / Reject / Return to plan according to
+who is looking. Each mission page carries its approval history, which opens itself when the newest
+cycle is a rejection.
 
 ### The mission board
 
@@ -342,9 +378,11 @@ These are deliberate, not oversights:
   signing out on one device signs out everywhere.
 - **No user management.** Accounts exist only because feature 01 seeds them; there is no
   registration, invite or password-reset flow.
-- **Missions cannot be approved, crewed or started.** Feature 04 builds planning, editing and
-  closing; approval is 05, matching 06 and crew assignment 07. Until then every mission reads as
-  unstaffed and `POST /start` is refused.
+- **Missions cannot be crewed or started.** Features 04 and 05 build planning, approval, editing
+  and closing; matching is 06 and crew assignment 07. Until then every mission reads as unstaffed
+  and `POST /start` is refused - correctly, since nobody can accept a place yet.
+- **A Director cannot return a rejected mission to planning.** That action is owner-only; a
+  Director's route out of a rejected mission is to close it.
 - **The remaining domain modules are missing** — no Crew, Assignment or Matching module, though
   the crew tables are seeded ready for them.
 - **Demo secrets.** `JWT_SECRET` and the database password in `.env.example` are development

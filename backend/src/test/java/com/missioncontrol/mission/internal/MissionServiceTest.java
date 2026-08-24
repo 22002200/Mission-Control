@@ -55,6 +55,7 @@ class MissionServiceTest {
     private static final Instant ENDS = Instant.parse("2026-09-14T17:00:00Z");
 
     @Mock private MissionRepository missions;
+    @Mock private MissionApprovalRepository approvalRepository;
     @Mock private SkillCatalogue skills;
     @Mock private UserDirectory users;
     @Mock private CurrentUser currentUser;
@@ -73,14 +74,25 @@ class MissionServiceTest {
         lenient().when(users.findByIds(anyCollection(), any()))
                 .thenReturn(Map.of(LEAD, new UserSummary(LEAD, "Marcus Reyes")));
         lenient().when(skills.findByIds(anyCollection(), any())).thenReturn(Map.of());
+        lenient().when(approvalRepository.findByMissionIdAndOrganisationIdAndDecision(
+                any(), any(), any())).thenReturn(Optional.empty());
+        // The loader locks the bare row before reading the detail, so the two finders have to
+        // agree. Delegating rather than stubbing twice means a test that arranges a mission gets
+        // one that can be commanded as well as read.
+        lenient().when(missions.lockByIdAndOrganisationId(any(), any())).thenAnswer(call ->
+                missions.findDetailByIdAndOrganisationId(call.getArgument(0), call.getArgument(1)));
 
         MissionStaffing missionStaffing = new MissionStaffing(staffingProvider);
+        MissionAccess access = new MissionAccess(currentUser, missionStaffing);
+        // Real collaborators rather than mocks: they are the rules under test, and a mocked
+        // loader would let a change to the lock-then-fetch order pass unnoticed here.
         service = new MissionService(
                 missions,
-                new MissionAccess(currentUser, missionStaffing),
+                new MissionLoader(missions, access, currentUser),
+                access,
                 missionStaffing,
-                skills,
-                users,
+                new MissionApprovals(approvalRepository),
+                new MissionDetailAssembler(missions, missionStaffing, skills, users, currentUser),
                 currentUser,
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
@@ -359,6 +371,40 @@ class MissionServiceTest {
 
             assertThatThrownBy(() -> service.close(MISSION, new CloseMissionRequest(null, null)))
                     .isInstanceOf(InvalidMissionTransitionException.class);
+        }
+
+        @Test
+        @DisplayName("Closing a mission awaiting a decision cancels its open cycle - feature 05")
+        void cancelsAnOpenApprovalCycle() {
+            MissionEntity mission = mission(MissionStatus.PENDING_APPROVAL, LEAD);
+            givenMission(mission);
+            MissionApprovalEntity open = MissionApprovalEntity.builder()
+                    .id(UUID.randomUUID())
+                    .organisationId(ORG)
+                    .missionId(MISSION)
+                    .submittedBy(LEAD)
+                    .submittedAt(NOW)
+                    .decision(ApprovalDecision.PENDING)
+                    .build();
+            when(approvalRepository.findByMissionIdAndOrganisationIdAndDecision(
+                    MISSION, ORG, ApprovalDecision.PENDING)).thenReturn(Optional.of(open));
+
+            service.close(MISSION, new CloseMissionRequest(null, "Launch window missed."));
+
+            // Left PENDING it would read on screen as still waiting for someone, and it would hold
+            // the partial unique index behind M8 against a resubmission that can never come.
+            assertThat(open.getDecision()).isEqualTo(ApprovalDecision.CANCELLED);
+            assertThat(open.getDecidedBy()).isEqualTo(LEAD);
+            assertThat(open.getComment()).isEqualTo("Launch window missed.");
+        }
+
+        @Test
+        @DisplayName("Closing a mission with nothing open is not an error")
+        void closingWithNoOpenCycleIsFine() {
+            givenMission(mission(MissionStatus.PLAN, LEAD));
+
+            assertThat(service.close(MISSION, new CloseMissionRequest(null, null)).status())
+                    .isEqualTo(MissionStatus.CLOSED);
         }
     }
 

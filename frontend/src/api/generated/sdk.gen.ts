@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AddRequirementData, AddRequirementErrors, AddRequirementResponses, CloseMissionData, CloseMissionErrors, CloseMissionResponses, CreateMissionData, CreateMissionErrors, CreateMissionResponses, CurrentUserData, CurrentUserErrors, CurrentUserResponses, DeleteRequirementData, DeleteRequirementErrors, DeleteRequirementResponses, GetMissionData, GetMissionErrors, GetMissionResponses, GetSkillData, GetSkillErrors, GetSkillResponses, GetSystemInfoData, GetSystemInfoResponses, ListMissionsData, ListMissionsErrors, ListMissionsResponses, ListSkillsData, ListSkillsErrors, ListSkillsResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, StartMissionData, StartMissionErrors, StartMissionResponses, UpdateMissionData, UpdateMissionErrors, UpdateMissionResponses, UpdateRequirementData, UpdateRequirementErrors, UpdateRequirementResponses } from './types.gen';
+import type { AddRequirementData, AddRequirementErrors, AddRequirementResponses, ApproveMissionData, ApproveMissionErrors, ApproveMissionResponses, CloseMissionData, CloseMissionErrors, CloseMissionResponses, CreateMissionData, CreateMissionErrors, CreateMissionResponses, CurrentUserData, CurrentUserErrors, CurrentUserResponses, DeleteRequirementData, DeleteRequirementErrors, DeleteRequirementResponses, GetMissionData, GetMissionErrors, GetMissionResponses, GetSkillData, GetSkillErrors, GetSkillResponses, GetSystemInfoData, GetSystemInfoResponses, ListMissionApprovalsData, ListMissionApprovalsErrors, ListMissionApprovalsResponses, ListMissionsData, ListMissionsErrors, ListMissionsResponses, ListSkillsData, ListSkillsErrors, ListSkillsResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, RejectMissionData, RejectMissionErrors, RejectMissionResponses, ReplanMissionData, ReplanMissionErrors, ReplanMissionResponses, StartMissionData, StartMissionErrors, StartMissionResponses, SubmitMissionData, SubmitMissionErrors, SubmitMissionResponses, UpdateMissionData, UpdateMissionErrors, UpdateMissionResponses, UpdateRequirementData, UpdateRequirementErrors, UpdateRequirementResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -60,6 +60,17 @@ export const addRequirement = <ThrowOnError extends boolean = false>(options: Op
 });
 
 /**
+ * Submit a mission for approval
+ *
+ * Moves a PLAN mission to PENDING_APPROVAL and opens an approval cycle for a director to decide. The mission must have at least one crew requirement: without one it would be vacuously fully staffed and could be started the moment it was approved.
+ */
+export const submitMission = <ThrowOnError extends boolean = false>(options: Options<SubmitMissionData, ThrowOnError>): RequestResult<SubmitMissionResponses, SubmitMissionErrors, ThrowOnError> => (options.client ?? client).post<SubmitMissionResponses, SubmitMissionErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/missions/{id}/submit',
+    ...options
+});
+
+/**
  * Start a mission
  *
  * Moves an APPROVED mission to ACTIVE. Every crew requirement must be filled first; the conflict response names the ones that are not.
@@ -71,6 +82,32 @@ export const startMission = <ThrowOnError extends boolean = false>(options: Opti
 });
 
 /**
+ * Return a rejected mission to planning
+ *
+ * Moves a REJECTED mission back to PLAN so it can be revised and resubmitted. The approval history is left intact and the next submission opens a new cycle. Owner-only: the route out of a rejected mission for a director is to close it.
+ */
+export const replanMission = <ThrowOnError extends boolean = false>(options: Options<ReplanMissionData, ThrowOnError>): RequestResult<ReplanMissionResponses, ReplanMissionErrors, ThrowOnError> => (options.client ?? client).post<ReplanMissionResponses, ReplanMissionErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/missions/{id}/replan',
+    ...options
+});
+
+/**
+ * Reject a mission
+ *
+ * Moves a PENDING_APPROVAL mission to REJECTED. The comment is required: a rejected plan that does not say why leaves its lead guessing. The mission can then be returned to planning and resubmitted, or closed.
+ */
+export const rejectMission = <ThrowOnError extends boolean = false>(options: Options<RejectMissionData, ThrowOnError>): RequestResult<RejectMissionResponses, RejectMissionErrors, ThrowOnError> => (options.client ?? client).post<RejectMissionResponses, RejectMissionErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/missions/{id}/reject',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
  * Close a mission
  *
  * Closing is terminal and is reachable from any other status - this is also how a mission is aborted. Omitting the reason records COMPLETED for a mission that was ACTIVE and ABORTED for anything else.
@@ -78,6 +115,21 @@ export const startMission = <ThrowOnError extends boolean = false>(options: Opti
 export const closeMission = <ThrowOnError extends boolean = false>(options: Options<CloseMissionData, ThrowOnError>): RequestResult<CloseMissionResponses, CloseMissionErrors, ThrowOnError> => (options.client ?? client).post<CloseMissionResponses, CloseMissionErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/missions/{id}/close',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * Approve a mission
+ *
+ * Moves a PENDING_APPROVAL mission to APPROVED and records the decision. A director may approve any mission in their organisation; because directors cannot own missions, they can never be approving their own work.
+ */
+export const approveMission = <ThrowOnError extends boolean = false>(options: Options<ApproveMissionData, ThrowOnError>): RequestResult<ApproveMissionResponses, ApproveMissionErrors, ThrowOnError> => (options.client ?? client).post<ApproveMissionResponses, ApproveMissionErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/missions/{id}/approve',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -192,6 +244,17 @@ export const listSkills = <ThrowOnError extends boolean = false>(options?: Optio
 export const getSkill = <ThrowOnError extends boolean = false>(options: Options<GetSkillData, ThrowOnError>): RequestResult<GetSkillResponses, GetSkillErrors, ThrowOnError> => (options.client ?? client).get<GetSkillResponses, GetSkillErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/skills/{id}',
+    ...options
+});
+
+/**
+ * List a mission's approval history
+ *
+ * Every submit-and-decide cycle, newest first. Returned whole rather than paged: a mission gains a cycle only when a plan is sent back and resubmitted, so the list stays small, and the screen showing it needs the count before it can render.
+ */
+export const listMissionApprovals = <ThrowOnError extends boolean = false>(options: Options<ListMissionApprovalsData, ThrowOnError>): RequestResult<ListMissionApprovalsResponses, ListMissionApprovalsErrors, ThrowOnError> => (options.client ?? client).get<ListMissionApprovalsResponses, ListMissionApprovalsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/missions/{id}/approvals',
     ...options
 });
 

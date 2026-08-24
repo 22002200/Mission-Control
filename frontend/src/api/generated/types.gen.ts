@@ -139,6 +139,13 @@ export type RequiredSkillRequest = {
 };
 
 /**
+ * The reason a plan was sent back.
+ */
+export type RejectMissionRequest = {
+    comment: string;
+};
+
+/**
  * Optional detail for closing a mission.
  */
 export type CloseMissionRequest = {
@@ -146,6 +153,13 @@ export type CloseMissionRequest = {
      * Defaults to COMPLETED from ACTIVE and ABORTED from anywhere else.
      */
     closeReason?: 'COMPLETED' | 'ABORTED' | 'REJECTED';
+    comment?: string;
+};
+
+/**
+ * An optional note recorded with an approval.
+ */
+export type ApproveMissionRequest = {
     comment?: string;
 };
 
@@ -277,6 +291,28 @@ export type MissionSummaryResponse = {
     fullyStaffed: boolean;
 };
 
+/**
+ * One submit-and-decide cycle on a mission.
+ */
+export type MissionApprovalResponse = {
+    id: string;
+    decision: 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+    /**
+     * The rejection reason, or a note left with a decision.
+     */
+    comment?: string;
+    submittedBy: UserRef;
+    submittedAt: string;
+    /**
+     * Absent while the cycle is still PENDING.
+     */
+    decidedBy?: UserRef;
+    /**
+     * Absent while the cycle is still PENDING.
+     */
+    decidedAt?: string;
+};
+
 export type ListMissionsData = {
     body?: never;
     path?: never;
@@ -399,6 +435,45 @@ export type AddRequirementResponses = {
 
 export type AddRequirementResponse = AddRequirementResponses[keyof AddRequirementResponses];
 
+export type SubmitMissionData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/missions/{id}/submit';
+};
+
+export type SubmitMissionErrors = {
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+    /**
+     * The caller does not own this mission
+     */
+    403: ProblemDetail;
+    /**
+     * No such mission the caller can see
+     */
+    404: ProblemDetail;
+    /**
+     * Not in PLAN, or it has no crew requirements
+     */
+    409: ProblemDetail;
+};
+
+export type SubmitMissionError = SubmitMissionErrors[keyof SubmitMissionErrors];
+
+export type SubmitMissionResponses = {
+    /**
+     * The mission, now PENDING_APPROVAL
+     */
+    200: MissionResponse;
+};
+
+export type SubmitMissionResponse = SubmitMissionResponses[keyof SubmitMissionResponses];
+
 export type StartMissionData = {
     body?: never;
     path: {
@@ -437,6 +512,88 @@ export type StartMissionResponses = {
 };
 
 export type StartMissionResponse = StartMissionResponses[keyof StartMissionResponses];
+
+export type ReplanMissionData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/missions/{id}/replan';
+};
+
+export type ReplanMissionErrors = {
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+    /**
+     * The caller does not own this mission
+     */
+    403: ProblemDetail;
+    /**
+     * No such mission the caller can see
+     */
+    404: ProblemDetail;
+    /**
+     * The mission is not REJECTED
+     */
+    409: ProblemDetail;
+};
+
+export type ReplanMissionError = ReplanMissionErrors[keyof ReplanMissionErrors];
+
+export type ReplanMissionResponses = {
+    /**
+     * The mission, back in PLAN
+     */
+    200: MissionResponse;
+};
+
+export type ReplanMissionResponse = ReplanMissionResponses[keyof ReplanMissionResponses];
+
+export type RejectMissionData = {
+    body: RejectMissionRequest;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/missions/{id}/reject';
+};
+
+export type RejectMissionErrors = {
+    /**
+     * The comment is missing, blank or too long
+     */
+    400: ProblemDetail;
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+    /**
+     * The caller is not a director
+     */
+    403: ProblemDetail;
+    /**
+     * No such mission the caller can see
+     */
+    404: ProblemDetail;
+    /**
+     * Not PENDING_APPROVAL - including because another director decided it first
+     */
+    409: ProblemDetail;
+};
+
+export type RejectMissionError = RejectMissionErrors[keyof RejectMissionErrors];
+
+export type RejectMissionResponses = {
+    /**
+     * The mission, now REJECTED
+     */
+    200: MissionResponse;
+};
+
+export type RejectMissionResponse = RejectMissionResponses[keyof RejectMissionResponses];
 
 export type CloseMissionData = {
     body?: CloseMissionRequest;
@@ -480,6 +637,49 @@ export type CloseMissionResponses = {
 };
 
 export type CloseMissionResponse = CloseMissionResponses[keyof CloseMissionResponses];
+
+export type ApproveMissionData = {
+    body?: ApproveMissionRequest;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/missions/{id}/approve';
+};
+
+export type ApproveMissionErrors = {
+    /**
+     * The note is too long
+     */
+    400: ProblemDetail;
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+    /**
+     * The caller is not a director
+     */
+    403: ProblemDetail;
+    /**
+     * No such mission the caller can see
+     */
+    404: ProblemDetail;
+    /**
+     * Not PENDING_APPROVAL - including because another director decided it first. The response carries currentStatus, so a stale view can be told from a genuine mistake.
+     */
+    409: ProblemDetail;
+};
+
+export type ApproveMissionError = ApproveMissionErrors[keyof ApproveMissionErrors];
+
+export type ApproveMissionResponses = {
+    /**
+     * The mission, now APPROVED
+     */
+    200: MissionResponse;
+};
+
+export type ApproveMissionResponse = ApproveMissionResponses[keyof ApproveMissionResponses];
 
 export type LogoutData = {
     body?: never;
@@ -789,6 +989,37 @@ export type GetSkillResponses = {
 };
 
 export type GetSkillResponse = GetSkillResponses[keyof GetSkillResponses];
+
+export type ListMissionApprovalsData = {
+    body?: never;
+    path: {
+        id: string;
+    };
+    query?: never;
+    url: '/api/missions/{id}/approvals';
+};
+
+export type ListMissionApprovalsErrors = {
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+    /**
+     * No such mission the caller can see
+     */
+    404: ProblemDetail;
+};
+
+export type ListMissionApprovalsError = ListMissionApprovalsErrors[keyof ListMissionApprovalsErrors];
+
+export type ListMissionApprovalsResponses = {
+    /**
+     * The history, newest first
+     */
+    200: Array<MissionApprovalResponse>;
+};
+
+export type ListMissionApprovalsResponse = ListMissionApprovalsResponses[keyof ListMissionApprovalsResponses];
 
 export type CurrentUserData = {
     body?: never;

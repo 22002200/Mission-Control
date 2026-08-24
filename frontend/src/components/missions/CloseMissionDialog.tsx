@@ -14,7 +14,7 @@ import { closeMissionMutation } from '../../api/generated/@tanstack/react-query.
 import type { MissionResponse } from '../../api/generated/types.gen';
 import { messageForProblem } from '../../lib/problemDetail';
 
-type CloseReason = 'COMPLETED' | 'ABORTED';
+type CloseReason = 'COMPLETED' | 'ABORTED' | 'REJECTED';
 
 interface Props {
   open: boolean;
@@ -27,8 +27,12 @@ interface Props {
  *
  * The reason is preselected the way the server would default it - COMPLETED for a mission that was
  * running, ABORTED for anything stopped earlier - so the common case is one click and the choice
- * is still visible. REJECTED is not offered: the server only accepts it for a mission that really
- * was rejected, and that path belongs to feature 05.
+ * is still visible.
+ *
+ * REJECTED is offered only for a mission that really was rejected, which is the one case the server
+ * accepts it in: a close reason contradicting the mission's own history would make the record
+ * actively misleading. It is also preselected there, because abandoning a rejected plan rather than
+ * revising it is FR-5, and 'aborted' would lose why it ended.
  *
  * A confirmation step rather than a bare button, because closing is terminal. Nothing reopens a
  * closed mission.
@@ -44,9 +48,12 @@ export default function CloseMissionDialog({ open, mission, onClose }: Props) {
 function CloseMissionForm({ mission, onClose }: Omit<Props, 'open'>) {
   const queryClient = useQueryClient();
 
-  const [reason, setReason] = useState<CloseReason>(
-    mission.status === 'ACTIVE' ? 'COMPLETED' : 'ABORTED',
-  );
+  const rejected = mission.status === 'REJECTED';
+
+  const [reason, setReason] = useState<CloseReason>(() => {
+    if (mission.status === 'ACTIVE') return 'COMPLETED';
+    return rejected ? 'REJECTED' : 'ABORTED';
+  });
   const [comment, setComment] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -87,6 +94,7 @@ function CloseMissionForm({ mission, onClose }: Omit<Props, 'open'>) {
           >
             <MenuItem value="COMPLETED">Completed</MenuItem>
             <MenuItem value="ABORTED">Aborted</MenuItem>
+            {rejected && <MenuItem value="REJECTED">Rejected</MenuItem>}
           </TextField>
 
           <TextField

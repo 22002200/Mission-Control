@@ -7,7 +7,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
 /**
- * The two attribute converters.
+ * The three attribute converters.
  *
  * <p>Small, but the null handling is load-bearing in one direction: {@code closeReason} is null on
  * every mission that is not closed, so a converter that turned null into a code - or threw on one -
@@ -17,6 +17,7 @@ class MissionEnumConverterTest {
 
     private final MissionStatusConverter statuses = new MissionStatusConverter();
     private final MissionCloseReasonConverter reasons = new MissionCloseReasonConverter();
+    private final ApprovalDecisionConverter decisions = new ApprovalDecisionConverter();
 
     @ParameterizedTest
     @EnumSource(MissionStatus.class)
@@ -36,11 +37,25 @@ class MissionEnumConverterTest {
         assertThat(reasons.convertToEntityAttribute(stored)).isSameAs(reason);
     }
 
+    @ParameterizedTest
+    @EnumSource(ApprovalDecision.class)
+    void approvalDecisionRoundTripsThroughTheColumn(ApprovalDecision decision) {
+        Short stored = decisions.convertToDatabaseColumn(decision);
+
+        assertThat(stored).isEqualTo((short) decision.code());
+        assertThat(decisions.convertToEntityAttribute(stored)).isSameAs(decision);
+    }
+
     @Test
     void nullsPassStraightThroughInBothDirections() {
         assertThat(statuses.convertToDatabaseColumn(null)).isNull();
         assertThat(statuses.convertToEntityAttribute(null)).isNull();
         assertThat(reasons.convertToDatabaseColumn(null)).isNull();
         assertThat(reasons.convertToEntityAttribute(null)).isNull();
+        // decision is NOT NULL in the schema, so this one never happens in practice. Asserted
+        // anyway, because the alternative is a converter that throws on a value the other two
+        // tolerate, and that asymmetry would only ever be discovered by accident.
+        assertThat(decisions.convertToDatabaseColumn(null)).isNull();
+        assertThat(decisions.convertToEntityAttribute(null)).isNull();
     }
 }

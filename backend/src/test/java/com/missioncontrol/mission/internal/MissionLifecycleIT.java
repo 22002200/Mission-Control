@@ -21,10 +21,12 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * The transitions that begin somewhere past {@code PLAN}.
  *
- * <p>Lives in {@code internal} and writes through the repository, because there is no way to reach
- * {@code PENDING_APPROVAL}, {@code APPROVED} or {@code ACTIVE} over HTTP until feature 05 adds the
- * approval endpoints. Arranging the state directly is the honest way to test the transitions out
- * of it in the meantime; the alternative is leaving M5 and M11 uncovered for a whole feature.
+ * <p>Lives in {@code internal} and writes through the repository. Feature 05 made
+ * {@code PENDING_APPROVAL} and {@code APPROVED} reachable over HTTP, and
+ * {@code MissionApprovalIT} arranges them that way; what is left here is the states that still have
+ * no route through the API - {@code ACTIVE}, which needs crew nobody can accept until feature 07 -
+ * and the transitions out of a state where going through the API would test the arrangement rather
+ * than the rule. M5 and M11 are the substance.
  *
  * <p>{@code Transactional}, so each fixture rolls back. Every other integration test counts the
  * seeded rows, and missions left behind here would make those counts drift.

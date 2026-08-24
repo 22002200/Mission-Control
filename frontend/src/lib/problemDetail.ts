@@ -45,6 +45,9 @@ export function messageForProblem(error: unknown, fallback = FALLBACK): string {
     case 'urn:mission-control:invalid-transition':
       return problem.detail ?? 'That is not something this mission can do right now.';
 
+    case 'urn:mission-control:mission-has-no-requirements':
+      return 'Add at least one crew requirement before submitting this mission for approval.';
+
     case 'urn:mission-control:mission-not-editable':
       return (
         problem.detail ??
@@ -64,7 +67,7 @@ export function messageForProblem(error: unknown, fallback = FALLBACK): string {
       return problem.detail ?? 'You do not have permission to do that.';
 
     case 'urn:mission-control:not-found':
-      return 'That mission no longer exists, or you no longer have access to it.';
+      return 'This mission does not exist, or you do not have access to it.';
 
     default:
       return problem.detail ?? fallback;

@@ -74,9 +74,24 @@ class MissionAccess {
      * whoever is doing it.
      */
     void requireIsOwner(MissionEntity mission) {
+        requireIsOwner(mission, "change its crew requirements");
+    }
+
+    /**
+     * The same rule, for an action that names itself.
+     *
+     * <p>Feature 05's submit and replan are owner-only too - and so is returning a rejected plan
+     * to planning, which is narrower than invariant M6 allows on purpose, because deciding to have
+     * another go at a plan is planning work. A director who tries either can see the mission, so
+     * they get a 403; telling them they may not 'change its crew requirements' when what they
+     * asked to do was submit a plan is worse than saying nothing.
+     *
+     * @param action completes the sentence 'Only the mission lead who owns this mission can ...'
+     */
+    void requireIsOwner(MissionEntity mission, String action) {
         if (!mission.isOwnedBy(currentUser.userId())) {
             throw new MissionForbiddenException(
-                    "Only the mission lead who owns this mission can change its crew requirements.");
+                    "Only the mission lead who owns this mission can " + action + ".");
         }
     }
 }

@@ -53,6 +53,25 @@ final class MissionMapper {
                 requirements);
     }
 
+    /**
+     * One approval cycle, with both of its user references resolved from the same map.
+     *
+     * <p>{@code decidedBy} is left {@code null} while the cycle is pending rather than run through
+     * {@link #userRef}, which would turn a legitimately absent decider into a
+     * {@code UserRef(null, "Unknown user")} - indistinguishable from a genuinely dangling id.
+     */
+    static MissionApprovalResponse toResponse(MissionApprovalEntity approval,
+                                              Map<UUID, UserSummary> users) {
+        return new MissionApprovalResponse(
+                approval.getId(),
+                approval.getDecision(),
+                approval.getComment(),
+                userRef(approval.getSubmittedBy(), users),
+                approval.getSubmittedAt(),
+                approval.getDecidedBy() == null ? null : userRef(approval.getDecidedBy(), users),
+                approval.getDecidedAt());
+    }
+
     static CrewRequirementResponse toResponse(CrewRequirementEntity requirement,
                                               Map<UUID, SkillSummary> skills,
                                               Map<UUID, Integer> acceptedCounts) {

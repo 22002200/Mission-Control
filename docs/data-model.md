@@ -92,8 +92,8 @@ loop keeps its full history rather than overwriting a single rejection reason.
 | `missionId` | |
 | `submittedBy`, `submittedAt` | |
 | `decidedBy`, `decidedAt` | null while pending |
-| `decision` | `ApprovalDecision` |
-| `comment` | rejection reason or approval note |
+| `decision` | `ApprovalDecision`; `CANCELLED` when the mission was closed while the cycle was still open |
+| `comment` | rejection reason, approval note, or the close comment of a cancelled cycle |
 
 **CrewRequirement** — a staffing line on a mission. Quantity-based, not one row per seat.
 
@@ -144,7 +144,7 @@ stored, so changing it silently re-points existing rows at a different value.
 | `UserStatus` | 1 `ACTIVE`, 2 `DISABLED` |
 | `MissionStatus` | 1 `PLAN`, 2 `PENDING_APPROVAL`, 3 `APPROVED`, 4 `REJECTED`, 5 `ACTIVE`, 6 `CLOSED` |
 | `MissionCloseReason` | 1 `COMPLETED`, 2 `ABORTED`, 3 `REJECTED` |
-| `ApprovalDecision` | 1 `PENDING`, 2 `APPROVED`, 3 `REJECTED` |
+| `ApprovalDecision` | 1 `PENDING`, 2 `APPROVED`, 3 `REJECTED`, 4 `CANCELLED` |
 | `AssignmentStatus` | 1 `OFFERED`, 2 `ACCEPTED`, 3 `DECLINED`, 4 `WITHDRAWN` |
 
 ## Invariants
@@ -201,7 +201,10 @@ Numbered so code and tests can cite them.
   mission.
 - **M7** Approve and reject are valid only from `PENDING_APPROVAL`, and only for a `DIRECTOR` in
   the same organisation.
-- **M8** A mission has at most one `MissionApproval` with `decision = PENDING` at a time.
+- **M8** A mission has at most one `MissionApproval` with `decision = PENDING` at a time. Enforced
+  as a partial unique index, so two concurrent submissions cannot both open a cycle. Closing a
+  mission that is awaiting a decision settles its open cycle as `CANCELLED`, which frees the
+  constraint rather than leaving it held by a cycle nobody will ever decide.
 - **M9** `requiredCount` is at least 1.
 - **M10** `(crewRequirementId, skillId)` is unique, and `minimumProficiency` is 1–5.
 - **M11** `APPROVED` to `ACTIVE` requires every `CrewRequirement` to have `requiredCount`
@@ -253,14 +256,25 @@ Computed on read. Storing them would create a second source of truth that drifts
 - **Mission edits after approval (M5).** Reverting to `PLAN` is the reading that satisfies both
   "edit at any time" and "resubmit for approval". What happens to crew who already accepted is
   not yet decided — currently they keep their assignments. Implemented in
-  [04](features/04-mission-management.md).
+  [04](features/04-mission-management.md). One consequence surfaced in 05: `APPROVED` to `PLAN` and
+  `ACTIVE` to `PLAN` are legal transitions *because of M5*, so an endpoint that only asks M3
+  whether `PLAN` is reachable is not asking the right question. `POST /replan` names `REJECTED`
+  explicitly.
 - **M11 cannot be satisfied until [07](features/07-crew-assignment.md).** Staffing counts reach
   `mission` through a port it declares itself, `mission.api.StaffingReadModel`, and the only
   implementation until then reports nothing as staffed. So `APPROVED` to `ACTIVE` is always
-  refused in a running application — which is moot, since nothing can reach `APPROVED` before
-  [05](features/05-mission-approval.md) either. One wrinkle worth recording: M11 read literally is
-  vacuously true for a mission with no requirements, so 04 refuses that case explicitly rather
-  than letting an empty mission launch. M12 is the real fix and it arrives with 05.
+  refused in a running application. A mission *can* now reach `APPROVED` — that arrived with
+  [05](features/05-mission-approval.md) — so this is no longer moot, merely unreachable one step
+  later. One wrinkle worth recording: M11 read literally is vacuously true for a mission with no
+  requirements, so 04 refuses that case explicitly rather than letting an empty mission launch.
+  M12 is the real fix and it arrived with 05, at submission time; both refusals stay, catching the
+  same hole at different depths.
+
+- **A director cannot unstick a rejected mission.** `POST /replan` is owner-only, which is narrower
+  than M6 allows, because 05's API table says so and having another go at a plan is planning work.
+  If the owning lead is unavailable, a director's only lever is closing the mission as `REJECTED`.
+  Revisit if that turns out to matter. Implemented in
+  [05](features/05-mission-approval.md).
 - **Match run auditability.** Suggestions are transient, so there is no record of why a crew
   member was picked. Persisting match runs would give that, at the cost of another entity.
 - **Organisation settings.** The spec says Directors manage them but never says what they are, so

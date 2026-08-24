@@ -136,6 +136,8 @@ decisions behind them and how they map onto modules.
 | Timestamps | UTC instants throughout | The frontend converts for display |
 | Enums | Integers with pinned, append-only codes | The integer is what is stored; reordering a constant would silently re-point existing rows |
 | Match results | Transient, not persisted | Nothing yet needs to audit why a crew member was suggested |
+| Mission transitions | A pessimistic row lock, taken by **every** command that changes a mission | The losing caller re-reads the status the winner committed, so it can be told what happened rather than that something went wrong. `@Version` reports a lock failure knowing nothing about the new status. A command that skips the lock defeats it entirely: dirty checking writes `set status = ?` with no status predicate, so it blocks and then overwrites |
+| Approval cycles | One row per submit-and-decide, append-only, never mapped as a collection on `Mission` | The REJECTED to PLAN to resubmit loop keeps its whole history. A JPA collection would put a cascade delete next to an append-only ledger, and grow the mission detail fetch for data no mission response carries |
 
 ### Module ownership
 

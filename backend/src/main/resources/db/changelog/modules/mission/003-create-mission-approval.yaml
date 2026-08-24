@@ -1,0 +1,143 @@
+# mission module - approval schema
+#
+# One row per submit-and-decide cycle, so the REJECTED -> PLAN -> resubmit loop
+# keeps its full history instead of overwriting a single rejection reason
+# (feature 05, FR-7 and NFR-3).
+#
+# organisation_id, submitted_by and decided_by carry no foreign key: organisation
+# and app_user belong to identity, and architecture.md forbids foreign keys across
+# a module boundary. mission_id is within this module, so that one is real.
+databaseChangeLog:
+  - changeSet:
+      id: mission-009-create-mission-approval
+      author: mission-control
+      comment: >-
+        decision holds the pinned integer codes from docs/data-model.md. The
+        cycle is deliberately not mapped as a collection on MissionEntity: an
+        approval is a ledger entry beside the mission rather than part of the
+        aggregate, and a cascade-delete association next to an append-only record
+        is a deletion waiting to happen. The delete cascade below is the
+        database's job instead.
+      changes:
+        - createTable:
+            tableName: mission_approval
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_mission_approval
+                    nullable: false
+              - column:
+                  name: organisation_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: mission_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    # Same module, so a real foreign key is correct here.
+                    foreignKeyName: fk_mission_approval_mission
+                    references: mission(id)
+                    deleteCascade: true
+              - column:
+                  name: submitted_by
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: submitted_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: decided_by
+                  type: UUID
+                  constraints:
+                    nullable: true
+              - column:
+                  name: decided_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: true
+              - column:
+                  name: decision
+                  type: SMALLINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: comment
+                  type: VARCHAR(1000)
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: mission-010-mission-approval-checks
+      author: mission-control
+      comment: >-
+        NFR-4 - every decision records who made it and when - stated as two
+        separate equivalences rather than one with an AND. Combined, the state
+        'decided_at set, decided_by null' would satisfy false = (true AND false)
+        and pass. BR-6 is here too: a rejection that does not say why is not
+        actionable, so the schema refuses one rather than trusting a bean
+        validation annotation to be the only guard. addCheckConstraint is a
+        Liquibase Pro feature, so these are raw SQL with explicit rollbacks.
+      changes:
+        - sql:
+            sql: ALTER TABLE mission_approval ADD CONSTRAINT ck_mission_approval_decision CHECK (decision BETWEEN 1 AND 4)
+        - sql:
+            sql: ALTER TABLE mission_approval ADD CONSTRAINT ck_mission_approval_decided_by CHECK ((decision = 1) = (decided_by IS NULL))
+        - sql:
+            sql: ALTER TABLE mission_approval ADD CONSTRAINT ck_mission_approval_decided_at CHECK ((decision = 1) = (decided_at IS NULL))
+        - sql:
+            sql: ALTER TABLE mission_approval ADD CONSTRAINT ck_mission_approval_order CHECK (decided_at IS NULL OR decided_at >= submitted_at)
+        - sql:
+            sql: ALTER TABLE mission_approval ADD CONSTRAINT ck_mission_approval_reject_comment CHECK (decision <> 3 OR (comment IS NOT NULL AND length(btrim(comment)) > 0))
+      rollback:
+        - sql:
+            sql: ALTER TABLE mission_approval DROP CONSTRAINT ck_mission_approval_decision
+        - sql:
+            sql: ALTER TABLE mission_approval DROP CONSTRAINT ck_mission_approval_decided_by
+        - sql:
+            sql: ALTER TABLE mission_approval DROP CONSTRAINT ck_mission_approval_decided_at
+        - sql:
+            sql: ALTER TABLE mission_approval DROP CONSTRAINT ck_mission_approval_order
+        - sql:
+            sql: ALTER TABLE mission_approval DROP CONSTRAINT ck_mission_approval_reject_comment
+
+  - changeSet:
+      id: mission-011-mission-approval-pending-unique
+      author: mission-control
+      comment: >-
+        Invariant M8 - at most one PENDING approval per mission - as a partial
+        unique index rather than a check in application code, so two concurrent
+        submissions cannot both win. Liquibase OSS createIndex has no WHERE
+        clause, so this is raw SQL with an explicit rollback, the same shape the
+        identity and skill uniqueness changesets use. Settled cycles are
+        deliberately unconstrained: FR-7 allows any number of them.
+      changes:
+        - sql:
+            sql: CREATE UNIQUE INDEX ux_mission_approval_pending ON mission_approval (mission_id) WHERE decision = 1
+      rollback:
+        - sql:
+            sql: DROP INDEX ux_mission_approval_pending
+
+  - changeSet:
+      id: mission-012-mission-approval-index
+      author: mission-control
+      comment: >-
+        FR-6 reads a mission's history newest first, so the composite covers it;
+        a btree serves either direction. No index on organisation_id alone,
+        because no query leads with it.
+      changes:
+        - createIndex:
+            tableName: mission_approval
+            indexName: ix_mission_approval_mission_submitted_at
+            columns:
+              - column:
+                  name: mission_id
+              - column:
+                  name: submitted_at

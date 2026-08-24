@@ -5,7 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getMission, listSkills } from '../../api/generated/sdk.gen';
+import { getMission, listMissionApprovals, listSkills } from '../../api/generated/sdk.gen';
 import type { CurrentUserResponse, MissionResponse } from '../../api/generated/types.gen';
 import { AuthContext, type AuthContextValue } from '../../auth/AuthContext';
 import { theme } from '../../theme';
@@ -18,6 +18,7 @@ vi.mock('../../api/generated/sdk.gen', async (importOriginal) => ({
   listSkills: vi.fn(),
   startMission: vi.fn(),
   deleteRequirement: vi.fn(),
+  listMissionApprovals: vi.fn(),
 }));
 
 const MISSION_ID = 'a4000000-0000-0000-0000-000000000001';
@@ -57,6 +58,9 @@ function mission(overrides: Partial<MissionResponse> = {}): MissionResponse {
 
 function renderDetail(user: CurrentUserResponse, data: MissionResponse = mission()) {
   vi.mocked(getMission).mockResolvedValue({ data } as never);
+  // The page now carries an approval history, which fetches on mount. Left unmocked it would try
+  // the network and fail the query, and every case here would render an error instead of a mission.
+  vi.mocked(listMissionApprovals).mockResolvedValue({ data: [] } as never);
   vi.mocked(listSkills).mockResolvedValue({
     data: { content: [], page: 0, size: 200, totalElements: 0, totalPages: 0 },
   } as never);
@@ -207,7 +211,7 @@ describe('MissionDetailPage', () => {
 
     await waitFor(() =>
       expect(screen.getByRole('alert')).toHaveTextContent(
-        'That mission no longer exists, or you no longer have access to it.',
+        'This mission does not exist, or you do not have access to it.',
       ),
     );
   });

@@ -3,8 +3,8 @@
 import { type DefaultError, type InfiniteData, infiniteQueryOptions, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { addRequirement, closeMission, createMission, currentUser, deleteRequirement, getMission, getSkill, getSystemInfo, listMissions, listSkills, login, logout, type Options, startMission, updateMission, updateRequirement } from '../sdk.gen';
-import type { AddRequirementData, AddRequirementError, AddRequirementResponse, CloseMissionData, CloseMissionError, CloseMissionResponse, CreateMissionData, CreateMissionError, CreateMissionResponse, CurrentUserData, CurrentUserError, CurrentUserResponse2, DeleteRequirementData, DeleteRequirementError, DeleteRequirementResponse, GetMissionData, GetMissionError, GetMissionResponse, GetSkillData, GetSkillError, GetSkillResponse, GetSystemInfoData, GetSystemInfoResponse, ListMissionsData, ListMissionsError, ListMissionsResponse, ListSkillsData, ListSkillsError, ListSkillsResponse, LoginData, LoginError, LoginResponse2, LogoutData, LogoutError, LogoutResponse, StartMissionData, StartMissionError, StartMissionResponse, UpdateMissionData, UpdateMissionError, UpdateMissionResponse, UpdateRequirementData, UpdateRequirementError, UpdateRequirementResponse } from '../types.gen';
+import { addRequirement, approveMission, closeMission, createMission, currentUser, deleteRequirement, getMission, getSkill, getSystemInfo, listMissionApprovals, listMissions, listSkills, login, logout, type Options, rejectMission, replanMission, startMission, submitMission, updateMission, updateRequirement } from '../sdk.gen';
+import type { AddRequirementData, AddRequirementError, AddRequirementResponse, ApproveMissionData, ApproveMissionError, ApproveMissionResponse, CloseMissionData, CloseMissionError, CloseMissionResponse, CreateMissionData, CreateMissionError, CreateMissionResponse, CurrentUserData, CurrentUserError, CurrentUserResponse2, DeleteRequirementData, DeleteRequirementError, DeleteRequirementResponse, GetMissionData, GetMissionError, GetMissionResponse, GetSkillData, GetSkillError, GetSkillResponse, GetSystemInfoData, GetSystemInfoResponse, ListMissionApprovalsData, ListMissionApprovalsError, ListMissionApprovalsResponse, ListMissionsData, ListMissionsError, ListMissionsResponse, ListSkillsData, ListSkillsError, ListSkillsResponse, LoginData, LoginError, LoginResponse2, LogoutData, LogoutError, LogoutResponse, RejectMissionData, RejectMissionError, RejectMissionResponse, ReplanMissionData, ReplanMissionError, ReplanMissionResponse, StartMissionData, StartMissionError, StartMissionResponse, SubmitMissionData, SubmitMissionError, SubmitMissionResponse, UpdateMissionData, UpdateMissionError, UpdateMissionResponse, UpdateRequirementData, UpdateRequirementError, UpdateRequirementResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -159,6 +159,25 @@ export const addRequirementMutation = (options?: Partial<Options<AddRequirementD
 };
 
 /**
+ * Submit a mission for approval
+ *
+ * Moves a PLAN mission to PENDING_APPROVAL and opens an approval cycle for a director to decide. The mission must have at least one crew requirement: without one it would be vacuously fully staffed and could be started the moment it was approved.
+ */
+export const submitMissionMutation = (options?: Partial<Options<SubmitMissionData>>): UseMutationOptions<SubmitMissionResponse, SubmitMissionError, Options<SubmitMissionData>> => {
+    const mutationOptions: UseMutationOptions<SubmitMissionResponse, SubmitMissionError, Options<SubmitMissionData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await submitMission({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
  * Start a mission
  *
  * Moves an APPROVED mission to ACTIVE. Every crew requirement must be filled first; the conflict response names the ones that are not.
@@ -178,6 +197,44 @@ export const startMissionMutation = (options?: Partial<Options<StartMissionData>
 };
 
 /**
+ * Return a rejected mission to planning
+ *
+ * Moves a REJECTED mission back to PLAN so it can be revised and resubmitted. The approval history is left intact and the next submission opens a new cycle. Owner-only: the route out of a rejected mission for a director is to close it.
+ */
+export const replanMissionMutation = (options?: Partial<Options<ReplanMissionData>>): UseMutationOptions<ReplanMissionResponse, ReplanMissionError, Options<ReplanMissionData>> => {
+    const mutationOptions: UseMutationOptions<ReplanMissionResponse, ReplanMissionError, Options<ReplanMissionData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await replanMission({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Reject a mission
+ *
+ * Moves a PENDING_APPROVAL mission to REJECTED. The comment is required: a rejected plan that does not say why leaves its lead guessing. The mission can then be returned to planning and resubmitted, or closed.
+ */
+export const rejectMissionMutation = (options?: Partial<Options<RejectMissionData>>): UseMutationOptions<RejectMissionResponse, RejectMissionError, Options<RejectMissionData>> => {
+    const mutationOptions: UseMutationOptions<RejectMissionResponse, RejectMissionError, Options<RejectMissionData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await rejectMission({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
  * Close a mission
  *
  * Closing is terminal and is reachable from any other status - this is also how a mission is aborted. Omitting the reason records COMPLETED for a mission that was ACTIVE and ABORTED for anything else.
@@ -186,6 +243,25 @@ export const closeMissionMutation = (options?: Partial<Options<CloseMissionData>
     const mutationOptions: UseMutationOptions<CloseMissionResponse, CloseMissionError, Options<CloseMissionData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await closeMission({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Approve a mission
+ *
+ * Moves a PENDING_APPROVAL mission to APPROVED and records the decision. A director may approve any mission in their organisation; because directors cannot own missions, they can never be approving their own work.
+ */
+export const approveMissionMutation = (options?: Partial<Options<ApproveMissionData>>): UseMutationOptions<ApproveMissionResponse, ApproveMissionError, Options<ApproveMissionData>> => {
+    const mutationOptions: UseMutationOptions<ApproveMissionResponse, ApproveMissionError, Options<ApproveMissionData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await approveMission({
                 ...options,
                 ...fnOptions,
                 throwOnError: true
@@ -401,6 +477,26 @@ export const getSkillOptions = (options: Options<GetSkillData>) => queryOptions<
         return data;
     },
     queryKey: getSkillQueryKey(options)
+});
+
+export const listMissionApprovalsQueryKey = (options: Options<ListMissionApprovalsData>) => createQueryKey('listMissionApprovals', options);
+
+/**
+ * List a mission's approval history
+ *
+ * Every submit-and-decide cycle, newest first. Returned whole rather than paged: a mission gains a cycle only when a plan is sent back and resubmitted, so the list stays small, and the screen showing it needs the count before it can render.
+ */
+export const listMissionApprovalsOptions = (options: Options<ListMissionApprovalsData>) => queryOptions<ListMissionApprovalsResponse, ListMissionApprovalsError, ListMissionApprovalsResponse, ReturnType<typeof listMissionApprovalsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await listMissionApprovals({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: listMissionApprovalsQueryKey(options)
 });
 
 export const currentUserQueryKey = (options?: Options<CurrentUserData>) => createQueryKey('currentUser', options);

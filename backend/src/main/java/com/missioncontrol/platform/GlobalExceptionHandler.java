@@ -9,6 +9,7 @@ import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -140,6 +141,30 @@ public class GlobalExceptionHandler {
     public ProblemDetail handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
         ProblemDetail problem = ProblemDetail.forStatusAndDetail(
                 HttpStatus.BAD_REQUEST, "Parameter '" + ex.getName() + "' is not a valid value.");
+        problem.setTitle("Validation failed");
+        problem.setType(ProblemTypes.VALIDATION_FAILED);
+        return problem;
+    }
+
+    /**
+     * A request body that is absent, empty or not valid JSON.
+     *
+     * <p>Without this the catch-all below turns a missing body into a 500, which reads as an
+     * application fault for what is squarely a malformed request - the 400 row in the error table
+     * every spec shares. It was reachable before feature 05 and simply never exercised: any
+     * endpoint with a required {@code RequestBody} - creating a mission, adding a requirement -
+     * answered 500 to an empty {@code POST}. Rejecting a mission without a comment is the first
+     * case a spec named explicitly, which is how it surfaced.
+     *
+     * <p>The detail says nothing about what was wrong with the payload. Jackson's own message names
+     * types and offsets from the caller's input, and reflecting that back is both noise and a small
+     * disclosure.
+     */
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ProblemDetail handleUnreadableBody(HttpMessageNotReadableException ex) {
+        log.debug("Unreadable request body", ex);
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+                HttpStatus.BAD_REQUEST, "The request body is missing or is not valid JSON.");
         problem.setTitle("Validation failed");
         problem.setType(ProblemTypes.VALIDATION_FAILED);
         return problem;

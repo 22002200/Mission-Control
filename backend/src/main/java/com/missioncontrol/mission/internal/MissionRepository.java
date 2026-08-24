@@ -6,7 +6,9 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -20,6 +22,40 @@ interface MissionRepository extends JpaRepository<MissionEntity, UUID> {
      * a 403.
      */
     Optional<MissionEntity> findByIdAndOrganisationId(UUID id, UUID organisationId);
+
+    /**
+     * The same read, taking a write lock on the mission row - {@code select ... for update}.
+     *
+     * <p><strong>Every command that changes a mission's status starts here.</strong> Not only the
+     * approval ones: a lock that one side of a race skips is not a lock. Dirty checking issues
+     * {@code update mission set status = ? where id = ?} with no status predicate, so an
+     * unsynchronised {@code close} that read {@code PENDING_APPROVAL} will block on this lock and
+     * then happily overwrite the {@code APPROVED} that won - leaving an approval record next to a
+     * mission whose status contradicts it. The database cannot stop that; this can.
+     *
+     * <p>Deliberately <strong>not</strong> the fetch-join query above. PostgreSQL refuses
+     * {@code for update} on the nullable side of an outer join, so locking and eager-loading the
+     * requirements cannot be one statement. Lock here first, then read the detail: the second
+     * query returns the same managed instance, so it costs one extra round trip and no N+1.
+     *
+     * <p>Two things about this are invisible in the code and easy to break later.
+     * <strong>This must be the first entity load in the transaction</strong> - Hibernate's
+     * first-level cache will hand back a copy loaded before the lock was taken, which would defeat
+     * the whole thing. And <strong>{@code READ COMMITTED} is load-bearing</strong>: 'block, then
+     * see the value the winner committed' is specific to it, and under {@code REPEATABLE READ}
+     * PostgreSQL raises a serialization failure instead. Never set an isolation level on these
+     * methods.
+     *
+     * <p>No lock timeout hint either. On PostgreSQL Hibernate can only express {@code NOWAIT} and
+     * {@code SKIP LOCKED}; a positive millisecond timeout is silently ignored, and {@code NOWAIT}
+     * would turn the 409 the loser is supposed to get into a 500. These transactions read one row
+     * and write two, so waiting is measured in microseconds.
+     */
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("select m from MissionEntity m where m.id = :id and m.organisationId = :organisationId")
+    Optional<MissionEntity> lockByIdAndOrganisationId(
+            @Param("id") UUID id,
+            @Param("organisationId") UUID organisationId);
 
     /**
      * The same read, with the requirements and their skills already attached.

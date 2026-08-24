@@ -1,8 +1,8 @@
 /**
- * Missions, the crew they call for, and the parts of their lifecycle that do not need a director.
+ * Missions, the crew they call for, and their whole lifecycle - including a director's decision.
  *
- * <p>Owns {@code Mission}, {@code CrewRequirement} and {@code RequiredSkill}. {@code MissionApproval}
- * belongs here too and arrives with feature 05.
+ * <p>Owns {@code Mission}, {@code MissionApproval}, {@code CrewRequirement} and
+ * {@code RequiredSkill}.
  *
  * <p>The dependency that must never exist is on {@code assignment}. That module needs a mission's
  * dates and status in order to offer a place on it, so the arrow points that way and a second one

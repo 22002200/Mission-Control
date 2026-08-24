@@ -1,0 +1,106 @@
+# crew module - schema
+#
+# CrewMember is the crew-domain profile for a user; CrewSkill is their rated
+# proficiency in a catalogue skill.
+#
+# Neither user_id nor skill_id carries a foreign key - app_user belongs to
+# identity and skill to skill, and architecture.md forbids foreign keys across
+# module boundaries. crew_skill -> crew_member is within this module, so that
+# one is a real foreign key.
+databaseChangeLog:
+  - changeSet:
+      id: crew-001-create-crew-member
+      author: mission-control
+      comment: >-
+        Thin by design - the substance is crew_skill plus history derived from
+        assignments. user_id is unique because a user has at most one crew profile
+        (invariant C1).
+      changes:
+        - createTable:
+            tableName: crew_member
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_crew_member
+                    nullable: false
+              - column:
+                  name: organisation_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: user_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    unique: true
+                    uniqueConstraintName: ux_crew_member_user
+              - column:
+                  name: created_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: updated_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+
+  - changeSet:
+      id: crew-002-create-crew-skill
+      author: mission-control
+      comment: >-
+        Composite primary key on (crew_member_id, skill_id) enforces invariant C2 -
+        a crew member cannot hold the same skill twice.
+      changes:
+        - createTable:
+            tableName: crew_skill
+            columns:
+              - column:
+                  name: crew_member_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+                    foreignKeyName: fk_crew_skill_crew_member
+                    references: crew_member(id)
+                    deleteCascade: true
+              - column:
+                  name: skill_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: proficiency
+                  type: SMALLINT
+                  constraints:
+                    nullable: false
+        - addPrimaryKey:
+            tableName: crew_skill
+            columnNames: crew_member_id, skill_id
+            constraintName: pk_crew_skill
+
+  - changeSet:
+      id: crew-003-crew-skill-proficiency-check
+      author: mission-control
+      comment: Invariant C3 - proficiency is 1..5. The matching formulas assume this range.
+      changes:
+        - sql:
+            sql: ALTER TABLE crew_skill ADD CONSTRAINT ck_crew_skill_proficiency CHECK (proficiency BETWEEN 1 AND 5)
+      rollback:
+        - sql:
+            sql: ALTER TABLE crew_skill DROP CONSTRAINT ck_crew_skill_proficiency
+
+  - changeSet:
+      id: crew-004-crew-member-organisation-index
+      author: mission-control
+      comment: Matching filters the whole roster by organisation on every run.
+      changes:
+        - createIndex:
+            tableName: crew_member
+            indexName: ix_crew_member_organisation
+            columns:
+              - column:
+                  name: organisation_id

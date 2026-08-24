@@ -1,0 +1,39 @@
+# skill module - seed data
+#
+# Both catalogues deliberately share several names - EVA Operations, Robotics,
+# Life Support Systems, Flight Navigation, Medical Response - as separate rows
+# with separate ids. That is what demonstrates invariant S1: uniqueness is scoped
+# to the organisation, so two tenants can use the same vocabulary without sharing
+# a single row.
+#
+# Helios additionally has Solar Array Maintenance, which Orbital Dynamics does
+# not, so the catalogues are not merely mirror images.
+databaseChangeLog:
+  - changeSet:
+      id: skill-seed-001-catalogue
+      author: mission-control
+      contextFilter: seed
+      comment: 8 skills for Orbital Dynamics, 6 for Helios Aerospace. All active.
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO skill (id, organisation_id, name, category, description, active, created_at) VALUES
+                -- Orbital Dynamics
+                ('a2000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'EVA Operations',          'Operations',  'Extravehicular activity: suit handling, tethering, external repair.', TRUE, '2026-01-05 09:00:00+00'),
+                ('a2000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'Robotics',                'Engineering', 'Operation and maintenance of manipulator arms and rovers.',           TRUE, '2026-01-05 09:00:00+00'),
+                ('a2000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'Life Support Systems',    'Engineering', 'Atmosphere, water reclamation and thermal control.',                  TRUE, '2026-01-05 09:00:00+00'),
+                ('a2000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001', 'Flight Navigation',       'Operations',  'Trajectory planning, rendezvous and docking.',                       TRUE, '2026-01-05 09:00:00+00'),
+                ('a2000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000001', 'Geology Sampling',        'Science',     'Regolith and core sampling, sample handling and curation.',           TRUE, '2026-01-05 09:00:00+00'),
+                ('a2000000-0000-0000-0000-000000000006', 'a0000000-0000-0000-0000-000000000001', 'Medical Response',        'Medical',     'In-flight emergency medicine and crew health monitoring.',            TRUE, '2026-01-05 09:00:00+00'),
+                ('a2000000-0000-0000-0000-000000000007', 'a0000000-0000-0000-0000-000000000001', 'Propulsion Systems',      'Engineering', 'Main engine and RCS operation, diagnostics and repair.',              TRUE, '2026-01-05 09:00:00+00'),
+                ('a2000000-0000-0000-0000-000000000008', 'a0000000-0000-0000-0000-000000000001', 'Comms and Telemetry',     'Operations',  'Uplink and downlink management, antenna alignment.',                  TRUE, '2026-01-05 09:00:00+00'),
+                -- Helios Aerospace
+                ('b2000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'EVA Operations',          'Operations',  'Extravehicular activity: suit handling, tethering, external repair.', TRUE, '2026-01-05 09:00:00+00'),
+                ('b2000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000001', 'Robotics',                'Engineering', 'Operation and maintenance of manipulator arms and rovers.',           TRUE, '2026-01-05 09:00:00+00'),
+                ('b2000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000001', 'Life Support Systems',    'Engineering', 'Atmosphere, water reclamation and thermal control.',                  TRUE, '2026-01-05 09:00:00+00'),
+                ('b2000000-0000-0000-0000-000000000004', 'b0000000-0000-0000-0000-000000000001', 'Flight Navigation',       'Operations',  'Trajectory planning, rendezvous and docking.',                       TRUE, '2026-01-05 09:00:00+00'),
+                ('b2000000-0000-0000-0000-000000000005', 'b0000000-0000-0000-0000-000000000001', 'Solar Array Maintenance', 'Engineering', 'Deployment, cleaning and fault isolation on photovoltaic arrays.',    TRUE, '2026-01-05 09:00:00+00'),
+                ('b2000000-0000-0000-0000-000000000006', 'b0000000-0000-0000-0000-000000000001', 'Medical Response',        'Medical',     'In-flight emergency medicine and crew health monitoring.',            TRUE, '2026-01-05 09:00:00+00');
+      rollback:
+        - sql:
+            sql: DELETE FROM skill WHERE organisation_id IN ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001');

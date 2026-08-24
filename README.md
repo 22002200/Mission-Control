@@ -50,6 +50,34 @@ docker compose up --build --watch
 The first build downloads the Maven and npm dependency trees and takes a few minutes.
 Subsequent builds reuse cached layers and the `maven-cache` volume.
 
+### Seed data
+
+The local and docker profiles load two fictional organisations so multi-tenant behaviour can be
+exercised rather than assumed. See [`docs/features/01-seed-data.md`](docs/features/01-seed-data.md).
+
+**Every seeded user has the password `Password123!`**
+
+| Organisation | Role | Email |
+| --- | --- | --- |
+| Orbital Dynamics | Director | `vera.lindholm@orbitaldynamics.example` |
+| Orbital Dynamics | Mission Lead | `marcus.reyes@orbitaldynamics.example` |
+| Orbital Dynamics | Mission Lead | `priya.raman@orbitaldynamics.example` |
+| Orbital Dynamics | Crew (×8) | `ada.kowalski@`, `bruno.sato@`, `chen.ibarra@`, `dana.osei@`, `elif.novak@`, `farid.lindqvist@`, `greta.mbeki@`, `hugo.delacroix@` `orbitaldynamics.example` |
+| Helios Aerospace | Director | `tomas.eriksen@heliosaero.example` |
+| Helios Aerospace | Mission Lead | `sofia.mendes@heliosaero.example` |
+| Helios Aerospace | Mission Lead | `daniel.okafor@heliosaero.example` |
+| Helios Aerospace | Crew (×6) | `ines.varga@`, `jonas.petrov@`, `kira.almeida@`, `liam.ferreira@`, `maya.tanaka@`, `nikolai.berg@` `heliosaero.example` |
+
+These credentials are demo data and are deliberately weak. Seed changesets are tagged with the
+Liquibase context `seed`, which only the `local` and `docker` profiles activate — a deployment
+that leaves `spring.liquibase.contexts` at its default gets the schema and none of this.
+
+To run against a database with schema but no demo data:
+
+```bash
+SPRING_LIQUIBASE_CONTEXTS=default docker compose up backend
+```
+
 ### Why `--watch`
 
 `docker compose up --watch` *syncs* changed files into the running containers rather than

@@ -1,6 +1,6 @@
  ▐▛███▛█   Claude Code v2.1.241
 ▝▜██████▀  Opus 5 · API Usage Billing
-  ▝▝ ▝▝    C:\Projects\Mission Control\docs
+  ▝▝ ▝▝    C:\Projects\Mission Control
 
 
 ● Auto mode lets Claude handle permission prompts automatically — Claude
@@ -1082,8 +1082,8 @@
 
 ● Directory tree is in place. Now the root config files.
 
-● Write(C:\Projects\Mission Control\.gitignore)
-  ⎿  Wrote 45 lines to ..\.gitignore
+● Write(.gitignore)
+  ⎿  Wrote 45 lines to .gitignore
       1 # --- Java / Maven ---
       2 target/
       3 !.mvn/wrapper/maven-wrapper.jar
@@ -1095,8 +1095,8 @@
       9 replay_pid*
      … +35 lines (ctrl+o to expand)
 
-● Write(C:\Projects\Mission Control\.editorconfig)
-  ⎿  Wrote 25 lines to ..\.editorconfig
+● Write(.editorconfig)
+  ⎿  Wrote 25 lines to .editorconfig
       1 root = true
       2 
       3 [*]
@@ -1108,8 +1108,8 @@
       9 indent_size = 2
      … +15 lines (ctrl+o to expand)
 
-● Write(C:\Projects\Mission Control\.env.example)
-  ⎿  Wrote 15 lines to ..\.env.example
+● Write(.env.example)
+  ⎿  Wrote 15 lines to .env.example
        1 # Copy to `.env` and adjust as needed. `.env` is gitignored.
        2 # Compose reads this file automatically.
        3 
@@ -1126,8 +1126,8 @@
 
 ● Now the backend pom.xml.
 
-● Write(C:\Projects\Mission Control\backend\pom.xml)
-  ⎿  Wrote 212 lines to ..\backend\pom.xml
+● Write(backend\pom.xml)
+  ⎿  Wrote 212 lines to backend\pom.xml
        1 <?xml version="1.0" encoding="UTF-8"?>
        2 <project xmlns="http://maven.apache.org/POM/4.0.0"
        3          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
@@ -1179,7 +1179,7 @@
 ● One inaccuracy to fix — the "falls back to unknown" comment isn't true, the
   placeholder is always filtered by the Boot parent.
 
-● Update(C:\Projects\Mission Control\backend\src\main\resources\application.yml)
+● Update(backend\src\main\resources\application.yml)
   ⎿  Added 3 lines, removed 2 lines
       57      tags-sorter: alpha
       58  
@@ -1236,7 +1236,7 @@
 
 ● tsconfig.node.json references Node types — adding @types/node to match.
 
-● Update(C:\Projects\Mission Control\frontend\package.json)
+● Update(frontend\package.json)
   ⎿  Added 1 line
       31      "@testing-library/dom": "^10.4.1",
       32      "@testing-library/jest-dom": "7.0.1",
@@ -1308,8 +1308,7 @@
 
   Ran 1 shell command (ctrl+o to expand)
 
-● Update(C:\Projects\Mission Control\backend\src\main\java\com\missioncontrol\pl
-        atform\OpenApiConfig.java)
+● Update(backend\src\main\java\com\missioncontrol\platform\OpenApiConfig.java)
   ⎿  Added 2 lines
        5  import io.swagger.v3.oas.models.info.Info;
        6  import io.swagger.v3.oas.models.info.License;
@@ -1320,8 +1319,7 @@
       11  import org.springframework.context.annotation.Bean;
       12  import org.springframework.context.annotation.Configuration;
 
-● Update(C:\Projects\Mission Control\backend\src\main\java\com\missioncontrol\pl
-        atform\OpenApiConfig.java)
+● Update(backend\src\main\java\com\missioncontrol\platform\OpenApiConfig.java)
   ⎿  Added 5 lines
       30      @Bean
       31      public OpenAPI missionControlOpenApi(@Value("${missioncontr
@@ -1406,8 +1404,8 @@
 
 ● Clean. Now the documentation.
 
-● Write(C:\Projects\Mission Control\README.md)
-  ⎿  Wrote 155 lines to ..\README.md
+● Write(README.md)
+  ⎿  Wrote 155 lines to README.md
       1 # Mission Control
       2 
       3 A web application for planning space missions and assigning crew 
@@ -1415,13 +1413,13 @@
       5 
       6 This is currently a *walking skeleton*: the structure, build, and
          feedback loops are in place
-      8 [`../docs/architecture.md`](docs/architecture.md) for the module rul
+      8 [`../docs/architecture.md`](../docs/architecture.md) for the module rul
         es and the checklist for
       9 adding the first one.
      … +188 lines (ctrl+o to expand)
 
-● Write(architecture.md)
-  ⎿  Wrote 192 lines to architecture.md
+● Write(docs\architecture.md)
+  ⎿  Wrote 192 lines to docs\architecture.md
       1 # Architecture
       2 
         ne database, one build — but
@@ -1510,7 +1508,7 @@
   I staged everything but didn't commit — that's yours to make. git status is
   clean of node_modules, target, dist, and .env.
 
-✻ Churned for 35m 28s
+✻ Baked for 35m 28s
 
 ※ recap: Goal was scaffolding Mission Control as a modular monolith; that's done and verified running at localhost:5173, with 72 files staged in git. Next action is yours: review and make the initial commit. (disable recaps in /config)
 
@@ -1529,10 +1527,9 @@
 
 ● spring-modulith-docs comes in via the test starter. Writing the tests now.
 
-● Write(C:\Projects\Mission 
-       Control\backend\src\test\java\com\missioncontrol\ModularityTests.java)
+● Write(backend\src\test\java\com\missioncontrol\ModularityTests.java)
   ⎿  Wrote 54 lines to
-     ..\backend\src\test\java\com\missioncontrol\ModularityTests.java
+     backend\src\test\java\com\missioncontrol\ModularityTests.java
        1 package com.missioncontrol;
        2 
        3 import org.junit.jupiter.api.Test;
@@ -1568,7 +1565,7 @@
 
   Read 1 file (ctrl+o to expand)
 
-● Update(architecture.md)
+● Update(docs\architecture.md)
   ⎿  Added 50 lines, removed 30 lines
       114  - `spring.jpa.hibernate.ddl-auto` is `validate`. Liquibase own
            s the schema; Hibernate only checks
@@ -1703,7 +1700,7 @@
 
 ● Now the module checklist step that told you to create the test.
 
-● Update(architecture.md)
+● Update(docs\architecture.md)
   ⎿  Added 3 lines, removed 1 line
       188     `api`.
       189  4. Add migrations under `db/changelog/modules/<module>/`. No e
@@ -1727,7 +1724,7 @@
 ● Two stale references to fix (the transcripts/ export is historical — leaving
   it).
 
-● Update(C:\Projects\Mission Control\README.md)
+● Update(README.md)
   ⎿  Added 5 lines, removed 3 lines
       149  
       150  - **There is no authentication.** Spring Security is wired up 
@@ -1737,10 +1734,10 @@
       152 -- **There are no tests**, and therefore no `ModularityTests`, 
           -which means module boundaries are                             
       153 -  documented but *not enforced*. This is the top follow-up in 
-      154 -  [`../docs/architecture.md`](docs/architecture.md).             
+      154 -  [`../docs/architecture.md`](../docs/architecture.md).             
       152 +- **Test coverage is one test.** `ModularityTests` enforces th
           +e module boundaries (see                                      
-      153 +  [`../docs/architecture.md`](docs/architecture.md#enforcement)).
+      153 +  [`../docs/architecture.md`](../docs/architecture.md#enforcement)).
           + There are no integration tests and                           
       154 +  no frontend tests; the dependencies for both are declared an
           +d ready to use. Note that because                             
@@ -1750,7 +1747,7 @@
       157  - **There are no domain modules yet** — no Mission, Crew, or A
            ssignment.
 
-● Update(C:\Projects\Mission Control\README.md)
+● Update(README.md)
   ⎿  Added 1 line
       129  
       130  ```bash
@@ -1763,7 +1760,7 @@
            l   # psql shell
       135  docker compose logs -f backend
 
-● Update(C:\Projects\Mission Control\backend\pom.xml)
+● Update(backend\pom.xml)
   ⎿  Added 4 lines, removed 3 lines
       119          </dependency>
       120  
@@ -1789,7 +1786,7 @@
 
   Ran 1 shell command (ctrl+o to expand)
 
-✻ Brewed for 4m 18s
+✻ Cogitated for 4m 18s
 
 ※ recap: Goal: scaffold Mission Control as a modular monolith. The full stack is built and verified running at localhost:5173, with 72 files staged in git. Next action: review and make the initial commit yourself. (disable recaps in /config)
 
@@ -1803,7 +1800,7 @@
   ⎿  2 skills available
   ⎿  Not logged in · Please run /login
 
-✻ Cogitated for 0s
+✻ Cooked for 0s
 
 ❯ Based on docs/product.md, design the data model. Do not design JPA entities   
   or database tables yet. Document this in docs/data-model.md. Identify core    
@@ -2476,12 +2473,12 @@
 ● The heredoc choked on the content. Using the Write tool for a document this
   size.
 
-● Write(data-model.md)
-  ⎿  Wrote 245 lines to data-model.md
+● Write(docs\data-model.md)
+  ⎿  Wrote 245 lines to docs\data-model.md
       1 # Data Model
       2 
       3 Conceptual model only — entities, fields and invariants. No table
-      4 [`../docs/architecture.md`](../docs/architecture.md#data-model) for the decisions
+      4 [`architecture.md`](architecture.md#data-model) for the decisions
          and diagrams behind it.
       5 
       6 Conventions: all timestamps are **UTC instants**. All enums are s
@@ -2492,7 +2489,7 @@
 
 ● Now updating architecture.md. First the module tree.
 
-● Update(architecture.md)
+● Update(docs\architecture.md)
   ⎿  Added 6 lines, removed 3 lines
       18  ├── MissionControlApplication      <- root package: visible to 
           everything
@@ -2519,7 +2516,7 @@
 
 ● Now the Data model section, inserted after schema ownership.
 
-● Update(architecture.md)
+● Update(docs\architecture.md)
   ⎿  Added 97 lines
       117  - `spring.jpa.hibernate.ddl-auto` is `validate`. Liquibase own
            s the schema; Hibernate only checks
@@ -2527,7 +2524,7 @@
       119  
       120 +## Data model                                                 
       121 +                                                              
-      122 +Entity fields and invariants live in [`../docs/data-model.md`](data-mo
+      122 +Entity fields and invariants live in [`data-model.md`](data-mo
           +del.md). This section covers the                              
       123 +decisions behind them and how they map onto modules.          
       124 +                                                              
@@ -2659,7 +2656,7 @@
 
 ● Now closing out the two resolved open decisions.
 
-● Update(architecture.md)
+● Update(docs\architecture.md)
   ⎿  Added 9 lines, removed 4 lines
       307  Things deliberately not settled yet, recorded so they are not 
            silently forgotten:
@@ -2676,7 +2673,7 @@
       310 +  sketches the intended configuration shape. Logout will revok
           +e tokens via a `tokensValidFrom`                              
       311 +  instant on `User` — see the open questions in [`data-model.m
-          +d`](../docs/data-model.md#open-questions).                            
+          +d`](data-model.md#open-questions).                            
       312  - **Frontend routing.** No router yet, because there is one pa
            ge.
       313 +                                                              
@@ -2702,7 +2699,7 @@
 ● The ASCII lifecycle diagram is muddled — the resubmit and edit arrows conflict
   and REJECTED → PLAN isn't actually drawn. Redrawing it.
 
-● Update(architecture.md)
+● Update(docs\architecture.md)
   ⎿  Added 21 lines, removed 30 lines
       181  ### Mission lifecycle
       182  
@@ -2769,7 +2766,7 @@
           +its effect on crew who already                                
       204 +  accepted is still open.                                     
       205 +                                                              
-      206 +The exhaustive transition table is M3 in [`../docs/data-model.md`](dat
+      206 +The exhaustive transition table is M3 in [`data-model.md`](dat
           +a-model.md#mission).                                          
       207 +                                                              
       208  ## Enforcement
@@ -2778,7 +2775,7 @@
 
 ● Now tidying the ER diagram labels — a couple read backwards.
 
-● Update(architecture.md)
+● Update(docs\architecture.md)
   ⎿  Added 13 lines, removed 13 lines
       159  
       160  ```mermaid
@@ -2872,4 +2869,1328 @@
   Left alone: CLAUDE.md and docs/product.md show as modified in git — those are
   your edits, not mine. Nothing is committed.
 
-✻ Sautéed for 11m 5s
+✻ Cogitated for 11m 5s
+
+❯ /export                                                                       
+  ⎿  Conversation exported to: C:\Projects\Mission
+     Control\docs\2026-08-24-021217-transcript.md
+
+❯ I now want to break down the spec into individual feature specs that can be   
+  built incrementally. I have created a docs/features/ folder to put these in.  
+  Using docs/product.md, docs/architecture.md and docs/data-model.md, can you   
+  create specs for authentication, mission management, mission approval, crew   
+  matching, crew assignment, and any other capabilities that are necessary?     
+  Keep the specs concise and clear. Do not write any code yet or create new     
+  functionalities. Keep things simple for now. Clarify requirements if needed.  
+  For each feature spec include Purpose, Functional requirements,               
+  Non-functional requirements, Business rules, high level API definitions and   
+  contracts, Acceptance criteria and Error handling                             
+
+● Let me check the current docs state — product.md showed as modified earlier,
+  and I should see the new folder.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● docs/features/ is empty, and product.md gained one line — "Missions can be 
+  closed from any phase" — which confirms the M3 transition table.
+
+  Beyond your five, I think four more capabilities are needed for the product to
+  actually function (you can't run matching without skills and crew profiles
+  existing, and no user can log in until someone creates them). A few things
+  need pinning down first:
+
+● User answered Claude's questions:
+  ⎿  · Nothing in product.md says how organisations or users come to exist — 
+     there's no signup or invite flow, yet users must exist to log in. How 
+     should provisioning work? → Seed orgs + Directors, Directors manage users 
+     (Recommended)
+     · Which additional feature specs should I write alongside authentication, 
+     mission management, mission approval, crew matching and crew assignment? → 
+     Skill catalogue, Dashboard, Seed users with different roles and 
+     organisations as needed. Seed crew profiles and skills as well. Don't 
+     handle creating users yet
+     · How much API detail should each spec carry? You asked for "high level API
+     definitions and contracts" but also for concise specs. → Endpoint table + 
+     field lists (Recommended)
+     · "Crew Member's assignment history will be factored in for ranking" — 
+     which direction should history push a candidate? → Both: experience boosts,
+     recent load penalises (Recommended)
+
+● Two things to reconcile from your answers, and two gaps I'd rather not guess
+  on.
+
+  Your Q1 answer picked the "Directors manage users" option, but your Q2 answer
+  says "don't handle creating users yet" — so I'll take the later, more specific
+  instruction: everything seeded, no user-management API. Crew profiles seeded
+  too, so no crew-profile spec (I'll note self-management as deferred rather
+  than silently dropping it, since product.md §2 does promise it).
+
+  Two remaining gaps:
+
+● User answered Claude's questions:
+  ⎿  · product.md never says how a mission becomes ACTIVE. What triggers 
+     APPROVED → ACTIVE, and can a mission start with requirements not fully 
+     staffed? → Explicit start, fully staffed only
+     · `JwtProperties` currently defaults `access-token-ttl` to 15 minutes, but 
+     there's no refresh token, so users would be forced to log in every 15 
+     minutes. How should token lifetime work? → One long-lived token, 8 hours, 
+     no refresh (Recommended)
+
+● Both settled. Note that "fully staffed only" creates a hole worth closing: a
+  mission with zero requirements would be vacuously fully-staffed and could
+  start immediately — so submission needs to require at least one requirement.
+
+  Writing the plan.
+
+● Updated plan
+  ⎿  /plan to preview
+
+● Plan written — nine documents in docs/features/, built in dependency order.
+
+  Three things worth flagging before you approve:
+
+  Two new invariants fall out of "fully staffed only." M11 is the precondition
+  itself. M12 exists purely to close the hole M11 opens — a mission with zero
+  requirements is vacuously fully staffed, so without requiring at least one
+  requirement at submission time you could create an empty mission, get it
+  approved, and start it instantly. I'd add both to data-model.md so the specs
+  have something real to cite.
+
+  Cross-tenant access must return 404, not 403. A 403 confirms the resource
+  exists in someone else's organisation, which leaks precisely what T2 forbids.
+  It's the one convention I've called out prominently rather than burying in a
+  table.
+
+  The auth spec records two code changes it does not make — the PT15M → PT8H
+  default, and replacing the permitAll() behind the existing TODO(auth) in
+  SecurityConfig. This task stays documentation-only, as you asked.
+
+  I've followed your "don't handle creating users yet" over the earlier
+  provisioning answer. Since product.md §2 still promises crew members can
+  manage their own profile, that goes on a deferred list in the README rather
+  than disappearing.
+  ⎿  User rejected Claude's plan:
+     ╭─────────────────────────────────────────────────────────────────────────╮
+     │ Feature Specs → docs/features/                                          │
+     │                                                                         │
+     │ Context                                                                 │
+     │                                                                         │
+     │ product.md, architecture.md and data-model.md describe the whole        │
+     │ product, but nothing says                                               │
+     │ what to build first or in what order. docs/features/ is empty.          │
+     │                                                                         │
+     │ This task breaks the product into incrementally buildable feature specs │
+     │ — documentation only.                                                   │
+     │ No code, no new functionality, no changes to existing behaviour. Each   │
+     │ spec is scoped so it can be                                             │
+     │ built and demoed on its own, on top of the ones before it.              │
+     │                                                                         │
+     │ Decisions                                                               │
+     │                                                                         │
+     │ From the questions answered:                                            │
+     │                                                                         │
+     │ ┌────────────────┬───────────────────────────────────────────────────── │
+     │ ───┐                                                                    │
+     │ │    Question    │                        Decision                      │
+     │   │                                                                     │
+     │ ├────────────────┼───────────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │                │ Everything seeded — organisations, users of every    │
+     │   │                                                                     │
+     │ │ Provisioning   │ role, crew profiles, skills. No user-management API  │
+     │ in │                                                                    │
+     │ │                │  v1.                                                 │
+     │   │                                                                     │
+     │ ├────────────────┼───────────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │ Extra specs    │ Skill catalogue + Dashboard + a seed-data spec. No   │
+     │   │                                                                     │
+     │ │                │ org/user management, no crew-profile management.     │
+     │   │                                                                     │
+     │ ├────────────────┼───────────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │ Match ranking  │ skillScore + experience bonus − recent-load penalty  │
+     │   │                                                                     │
+     │ │                │ (formula below)                                      │
+     │   │                                                                     │
+     │ ├────────────────┼───────────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │ API detail     │ Endpoint table + short request/response field lists  │
+     │   │                                                                     │
+     │ ├────────────────┼───────────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │ Mission        │ Explicit start action, only when every requirement   │
+     │ is  │                                                                   │
+     │ │ activation     │ fully staffed                                        │
+     │   │                                                                     │
+     │ ├────────────────┼───────────────────────────────────────────────────── │
+     │ ───┤                                                                    │
+     │ │ Token lifetime │ Single 8-hour token, no refresh; logout revokes via  │
+     │   │                                                                     │
+     │ │                │ tokensValidFrom                                      │
+     │   │                                                                     │
+     │ └────────────────┴───────────────────────────────────────────────────── │
+     │ ───┘                                                                    │
+     │                                                                         │
+     │ Your Q1 answer chose "Directors manage users" but your Q2 answer said   │
+     │ "don't handle creating                                                  │
+     │ users yet" — I've taken the later, more specific instruction.           │
+     │ product.md §2 does promise crew                                         │
+     │ members "manage own profile settings", so crew-profile self-management  │
+     │ is recorded as deferred                                                 │
+     │ in the features README rather than quietly dropped.                     │
+     │                                                                         │
+     │ Specs to write                                                          │
+     │                                                                         │
+     │ Numbered in build order; each depends only on those above it.           │
+     │                                                                         │
+     │ ┌─────┬──────────────────────────┬───────────────────────────────────── │
+     │ ────┐                                                                   │
+     │ │  #  │           File           │                 Purpose              │
+     │    │                                                                    │
+     │ ├─────┼──────────────────────────┼───────────────────────────────────── │
+     │ ────┤                                                                   │
+     │ │ —   │ README.md                │ Index, build order, dependency       │
+     │ graph,   │                                                              │
+     │ │     │                          │ deferred-features list               │
+     │    │                                                                    │
+     │ ├─────┼──────────────────────────┼───────────────────────────────────── │
+     │ ────┤                                                                   │
+     │ │     │                          │ Two organisations, users of every    │
+     │ role, │                                                                 │
+     │ │ 01  │ 01-seed-data.md          │  crew profiles with skills, skill    │
+     │    │                                                                    │
+     │ │     │                          │ catalogue. No HTTP surface.          │
+     │    │                                                                    │
+     │ ├─────┼──────────────────────────┼───────────────────────────────────── │
+     │ ────┤                                                                   │
+     │ │ 02  │ 02-authentication.md     │ Login, logout, /me, JWT issuing,     │
+     │ tenant │                                                                │
+     │ │     │                          │  + role enforcement                  │
+     │    │                                                                    │
+     │ ├─────┼──────────────────────────┼───────────────────────────────────── │
+     │ ────┤                                                                   │
+     │ │ 03  │ 03-skill-catalogue.md    │ Org-scoped Skill CRUD; deactivate    │
+     │    │                                                                    │
+     │ │     │                          │ rather than delete                   │
+     │    │                                                                    │
+     │ ├─────┼──────────────────────────┼───────────────────────────────────── │
+     │ ────┤                                                                   │
+     │ │ 04  │ 04-mission-management.md │ Mission CRUD, crew requirements,     │
+     │ start, │                                                                │
+     │ │     │                          │  close                               │
+     │    │                                                                    │
+     │ ├─────┼──────────────────────────┼───────────────────────────────────── │
+     │ ────┤                                                                   │
+     │ │ 05  │ 05-mission-approval.md   │ Submit, approve, reject, return to   │
+     │    │                                                                    │
+     │ │     │                          │ plan, approval history               │
+     │    │                                                                    │
+     │ ├─────┼──────────────────────────┼───────────────────────────────────── │
+     │ ────┤                                                                   │
+     │ │ 06  │ 06-crew-matching.md      │ Ranked crew suggestions per          │
+     │ requirement │                                                           │
+     │ ├─────┼──────────────────────────┼───────────────────────────────────── │
+     │ ────┤                                                                   │
+     │ │ 07  │ 07-crew-assignment.md    │ Offer, accept, decline, withdraw     │
+     │    │                                                                    │
+     │ ├─────┼──────────────────────────┼───────────────────────────────────── │
+     │ ────┤                                                                   │
+     │ │ 08  │ 08-dashboard.md          │ Three role-specific dashboard views  │
+     │    │                                                                    │
+     │ └─────┴──────────────────────────┴───────────────────────────────────── │
+     │ ────┘                                                                   │
+     │                                                                         │
+     │ Matching (06) reads assignment data for its load penalty and its        │
+     │ "already offered" exclusion, so                                         │
+     │ it is only fully correct once 07 exists — noted in both specs. It is    │
+     │ still independently useful                                              │
+     │ before then, since with no assignments nothing is excluded.             │
+     │                                                                         │
+     │ Section template                                                        │
+     │                                                                         │
+     │ Every spec uses the same headings, in this order:                       │
+     │                                                                         │
+     │ 1. Purpose — one paragraph, plus which product.md capability it         │
+     │    delivers                                                             │
+     │ 2. Functional requirements — numbered FR-n                              │
+     │ 3. Non-functional requirements — numbered NFR-n                         │
+     │ 4. Business rules — numbered BR-n, each citing the data-model.md        │
+     │    invariant it enforces                                                │
+     │    (e.g. "BR-3 — enforces M3") so specs and model stay tied together    │
+     │ 5. API — endpoint table (method, path, role, purpose), then             │
+     │    per-endpoint request/response                                        │
+     │    fields and error codes                                               │
+     │ 6. Acceptance criteria — checkbox list, phrased as observable behaviour │
+     │ 7. Error handling — table of condition → status → error type            │
+     │                                                                         │
+     │ Cross-cutting conventions                                               │
+     │                                                                         │
+     │ Stated once in README.md, referenced from each spec rather than         │
+     │ repeated:                                                               │
+     │                                                                         │
+     │ - Errors are RFC 9457 ProblemDetail, already implemented in             │
+     │   backend/src/main/java/com/missioncontrol/platform/GlobalExceptionHand │
+     │   ler.java.                                                             │
+     │ - Status codes — 400 validation, 401 unauthenticated, 403 wrong role,   │
+     │   404 not found,                                                        │
+     │   409 domain-rule or state-transition violation.                        │
+     │ - Cross-tenant access returns 404, not 403. A 403 would confirm the     │
+     │   resource exists in another                                            │
+     │   organisation, which leaks exactly what invariant T2 forbids. This is  │
+     │   the one security detail                                               │
+     │   worth stating loudly.                                                 │
+     │ - All timestamps UTC in payloads (ISO-8601 with Z); the frontend        │
+     │   converts. Enums travel as                                             │
+     │   strings on the wire and are stored as integers — the JSON contract    │
+     │   should not expose the                                                 │
+     │   pinned codes.                                                         │
+     │ - List endpoints take page and size, default size=20.                   │
+     │ - Every endpoint is /api/**, documented via springdoc, and reachable by │
+     │   the generated TS client.                                              │
+     │                                                                         │
+     │ Notable per-spec content                                                │
+     │                                                                         │
+     │ 02 — Authentication. Requires changing access-token-ttl in              │
+     │ application.yml from PT15M to                                           │
+     │ PT8H, and replacing the permitAll() in SecurityConfig with the real     │
+     │ policy behind its                                                       │
+     │ existing TODO(auth). The spec records these as work to do; this task    │
+     │ does not make the code                                                  │
+     │ change.                                                                 │
+     │                                                                         │
+     │ 04 — Mission management. Carries M5 (editing an APPROVED or ACTIVE      │
+     │ mission reverts it to PLAN)                                             │
+     │ and the start precondition. RequiredSkill is embedded in the            │
+     │ requirement payload rather than                                         │
+     │ given its own endpoints — fewer round trips, and a requirement's skills │
+     │ are meaningless alone.                                                  │
+     │                                                                         │
+     │ 06 — Crew matching. Hard filters first, then score:                     │
+     │                                                                         │
+     │ filters:  available over [startsAt, endsAt]   (M3-style overlap, per    │
+     │ A3)                                                                     │
+     │           all mandatory skills at >= minimumProficiency                 │
+     │           no existing non-terminal assignment on this mission (A5)      │
+     │                                                                         │
+     │ score  =  skillScore                              0..1, preferred       │
+     │ skills only                                                             │
+     │         + 0.1 x completedMissions                 capped at +0.3        │
+     │         - 0.1 x assignmentsLast90d                capped at -0.3        │
+     │                                                                         │
+     │ skillScore = SUM(weight_i x met_i) / SUM(weight_i),                     │
+     │              met_i = 1 if proficiency >= min, else proficiency / min    │
+     │              (1.0 when a requirement has no preferred skills)           │
+     │                                                                         │
+     │ Mandatory skills filter only; they do not add to the score. Results are │
+     │ transient — no MatchRun                                                 │
+     │ entity, per the existing data-model decision.                           │
+     │                                                                         │
+     │ 07 — Crew assignment. The spec's centre of gravity is A4: the           │
+     │ schedule-overlap check runs                                             │
+     │ inside the accept transaction, not at offer time.                       │
+     │                                                                         │
+     │ 08 — Dashboard. One endpoint per role rather than a single polymorphic  │
+     │ one, so the generated                                                   │
+     │ TypeScript client gets three concrete types instead of a union.         │
+     │                                                                         │
+     │ Invariants to add to data-model.md                                      │
+     │                                                                         │
+     │ The activation decision needs two new rules, and the second exists only │
+     │ because of the first:                                                   │
+     │                                                                         │
+     │ - M11 — APPROVED → ACTIVE requires every CrewRequirement to have        │
+     │   requiredCount ACCEPTED                                                │
+     │   assignments. It is a precondition of the transition, not a continuous │
+     │   invariant: withdrawing                                                │
+     │   crew from an already-ACTIVE mission does not revert it.               │
+     │ - M12 — submitting for approval requires at least one CrewRequirement.  │
+     │   Without this, a                                                       │
+     │   mission with no requirements is vacuously fully staffed and could be  │
+     │   started immediately —                                                 │
+     │   a hole M11 opens up.                                                  │
+     │                                                                         │
+     │ Files                                                                   │
+     │                                                                         │
+     │ ┌─────────────────────────────────┬─────────────────────────────┐       │
+     │ │              File               │           Change            │       │
+     │ ├─────────────────────────────────┼─────────────────────────────┤       │
+     │ │ docs/features/README.md + 01–08 │ New. Nine documents.        │       │
+     │ ├─────────────────────────────────┼─────────────────────────────┤       │
+     │ │ docs/data-model.md              │ Add invariants M11 and M12. │       │
+     │ └─────────────────────────────────┴─────────────────────────────┘       │
+     │                                                                         │
+     │ No code. No changes to product.md or architecture.md.                   │
+     │                                                                         │
+     │ Verification                                                            │
+     │                                                                         │
+     │ Documentation only — verification is review:                            │
+     │                                                                         │
+     │ 1. Coverage — every capability in product.md §3 and every role ability  │
+     │    in §2 is delivered by                                                │
+     │    exactly one spec, or is on the README's deferred list. No capability │
+     │    silently unowned.                                                    │
+     │ 2. Incrementality — each spec is buildable using only the specs above   │
+     │    it; the dependency graph                                             │
+     │    is acyclic and matches the numbering.                                │
+     │ 3. Model consistency — every BR-n cites a real invariant from           │
+     │    data-model.md, and no spec                                           │
+     │    contradicts one. All entity and field names match the model exactly. │
+     │ 4. Module fit — endpoints sit in the module architecture.md says owns   │
+     │    that data; no spec                                                   │
+     │    implies a mission → assignment dependency.                           │
+     │ 5. Structure — all nine files carry the seven required sections.        │
+     │ 6. No code — nothing outside docs/ is touched.                          │
+     ╰─────────────────────────────────────────────────────────────────────────╯
+
+● Good catch — that inverts the skill scoring: proficiency becomes a qualifying
+  threshold, and among qualified candidates you prefer the least over-qualified
+  (don't burn a 5/5 expert on a job needing 2/5). One thing that changes
+  materially depending on scope:
+
+● User declined to answer questions
+  ⎿  · Should the "prefer lower proficiency" preference apply to mandatory 
+     skills too, or only to preferred ones? Right now `mandatory` is a pass/fail
+     filter that contributes nothing to the score. (All required skills — 
+     mandatory and preferred (Recommended) / Preferred skills only / Retire the 
+     mandatory flag)
+
+● I paused before answering that one — what would you like to clarify?
+
+  For context, here's where the ambiguity sits. RequiredSkill currently has two
+  flags doing different jobs:
+
+  - mandatory — a pass/fail gate. Candidate lacks it, or has it below
+    minimumProficiency, they're filtered out entirely and never ranked.
+  - weight — only used for ranking, and only on preferred (non-mandatory)
+    skills.
+
+  Your instruction — qualify at or above the minimum, then prefer the least
+  over-qualified — is clear. What I can't tell is which skills that preference 
+  ranks across.
+
+  If it applies only to preferred skills, then a requirement listing just
+  mandatory skills produces an identical skill score for every eligible
+  candidate, and ranking falls through entirely to the experience and
+  recent-load terms. Someone at exactly 3/5 and someone at 5/5 would be
+  indistinguishable on skills.
+
+  If it applies to mandatory skills as well, they keep gating eligibility but
+  also feed the score, so over-qualification counts against you everywhere.
+
+  There's also a smaller sub-question underneath: when a candidate has a
+  preferred skill but below its minimum — are they simply not credited for it,
+  or does that disqualify them the way a mandatory shortfall does?
+
+  Happy to take this in whatever direction you had in mind — including that I've
+  mis-framed it and the mandatory/preferred split itself needs rethinking.
+
+✻ Crunched for 5m 8s
+
+❯ The issue is assigning over qualified crew members may prevent them from      
+  being assigned to other missions requiring higher qualifications, which the   
+  lower qualified member cannot be assigned to. For preferred skills, we can    
+  consider candidates below the minimum with the skillScore you previously      
+  created, but for mandatory skills, prefer candidates who have lower skills    
+  but pass the minimum.                                                         
+
+● That's a clear rationale — over-qualified crew are a scarce resource, and
+  spending them on a mission that doesn't need them blocks the mission that
+  does. So the two flags score in opposite directions:
+
+  - Mandatory — hard filter at the minimum, then lower is better (conserve
+    headroom).
+  - Preferred — the original formula, higher is better, with partial credit
+    below the minimum.
+
+  Let me update the plan.
+● Updated plan
+  ⎿  /plan to preview
+
+● Updated plan
+  ⎿  /plan to preview
+
+● Updated plan
+  ⎿  /plan to preview
+
+● Plan updated. The scoring now reads:
+
+  Mandatory — filter at the minimum, then fit = 1 − excess/(5 − min), so a
+  candidate sitting exactly on the bar scores 1.0 and a 5/5 on a min-3
+  requirement scores 0.0.
+
+  Preferred — your original formula unchanged: met = 1 at or above the minimum,
+  proficiency/min below it, 0 if absent.
+
+  Both feed one weighted sum normalised across all required skills, so a single
+  weight field governs relative importance regardless of which kind a skill is.
+
+  On the example EVA(mandatory, min 3) + Robotics(preferred, min 4): exact-fit
+  EVA 3 / Rob 4 scores 1.00, EVA 3 / Rob 2 scores 0.75, and the over-qualified
+  EVA 5 / Rob 4 scores 0.50 — so the 5/5 EVA specialist stays available for a
+  mission that actually needs 5.
+
+  Two consequences worth noting:
+
+  Two field descriptions in data-model.md are now factually wrong. mandatory
+  says "false = contributes to ranking" (both kinds do now) and weight says "for
+  preferred skills" (it applies to all). I've added those corrections to the
+  plan — leaving them would mislead whoever implements matching.
+
+  The experience bonus pulls against conservation. A veteran expert loses on
+  skillScore but gains up to +0.3 on completedMissions. The ±0.3 caps keep it
+  secondary to a skillScore spanning 0–1, so conservation still dominates — but
+  it's a real interaction, and I'll state it in the spec rather than let it
+  surprise someone reading the ranking output.
+
+● User approved Claude's plan
+  ⎿  Plan saved to: ~\.claude\plans\i-am-starting-a-ethereal-lemon.md · /plan to
+     edit
+     Feature Specs → docs/features/
+
+     Context
+
+     product.md, architecture.md and data-model.md describe the whole product,
+     but nothing says
+     what to build first or in what order. docs/features/ is empty.
+
+     This task breaks the product into incrementally buildable feature specs —
+     documentation only.
+     No code, no new functionality, no changes to existing behaviour. Each spec
+     is scoped so it can be
+     built and demoed on its own, on top of the ones before it.
+
+     Decisions
+
+     From the questions answered:
+
+     ┌───────────────┬─────────────────────────────────────────────────────────┐
+     │   Question    │                        Decision                         │
+     ├───────────────┼─────────────────────────────────────────────────────────┤
+     │ Provisioning  │ Everything seeded — organisations, users of every role, │
+     │               │  crew profiles, skills. No user-management API in v1.   │
+     ├───────────────┼─────────────────────────────────────────────────────────┤
+     │ Extra specs   │ Skill catalogue + Dashboard + a seed-data spec. No      │
+     │               │ org/user management, no crew-profile management.        │
+     ├───────────────┼─────────────────────────────────────────────────────────┤
+     │               │ Mandatory skills: filter at minimum, then prefer lower  │
+     │ Match ranking │ proficiency (conserve scarce expertise). Preferred      │
+     │               │ skills: prefer higher, partial credit below minimum.    │
+     │               │ Plus experience bonus − recent-load penalty.            │
+     ├───────────────┼─────────────────────────────────────────────────────────┤
+     │ API detail    │ Endpoint table + short request/response field lists     │
+     ├───────────────┼─────────────────────────────────────────────────────────┤
+     │ Mission       │ Explicit start action, only when every requirement is   │
+     │ activation    │ fully staffed                                           │
+     ├───────────────┼─────────────────────────────────────────────────────────┤
+     │ Token         │ Single 8-hour token, no refresh; logout revokes via     │
+     │ lifetime      │ tokensValidFrom                                         │
+     └───────────────┴─────────────────────────────────────────────────────────┘
+
+     Your Q1 answer chose "Directors manage users" but your Q2 answer said
+     "don't handle creating
+     users yet" — I've taken the later, more specific instruction. product.md §2
+     does promise crew
+     members "manage own profile settings", so crew-profile self-management is 
+     recorded as deferred
+     in the features README rather than quietly dropped.
+
+     Specs to write
+
+     Numbered in build order; each depends only on those above it.
+
+     ┌─────┬──────────────────────────┬─────────────────────────────────────────
+     ┐
+     │  #  │           File           │                 Purpose
+     │
+     ├─────┼──────────────────────────┼─────────────────────────────────────────
+     ┤
+     │ —   │ README.md                │ Index, build order, dependency graph,
+     │
+     │     │                          │ deferred-features list
+     │
+     ├─────┼──────────────────────────┼─────────────────────────────────────────
+     ┤
+     │     │                          │ Two organisations, users of every role,
+     │
+     │ 01  │ 01-seed-data.md          │  crew profiles with skills, skill
+     │
+     │     │                          │ catalogue. No HTTP surface.
+     │
+     ├─────┼──────────────────────────┼─────────────────────────────────────────
+     ┤
+     │ 02  │ 02-authentication.md     │ Login, logout, /me, JWT issuing, tenant
+     │
+     │     │                          │  + role enforcement
+     │
+     ├─────┼──────────────────────────┼─────────────────────────────────────────
+     ┤
+     │ 03  │ 03-skill-catalogue.md    │ Org-scoped Skill CRUD; deactivate
+     │
+     │     │                          │ rather than delete
+     │
+     ├─────┼──────────────────────────┼─────────────────────────────────────────
+     ┤
+     │ 04  │ 04-mission-management.md │ Mission CRUD, crew requirements, start,
+     │
+     │     │                          │  close
+     │
+     ├─────┼──────────────────────────┼─────────────────────────────────────────
+     ┤
+     │ 05  │ 05-mission-approval.md   │ Submit, approve, reject, return to
+     │
+     │     │                          │ plan, approval history
+     │
+     ├─────┼──────────────────────────┼─────────────────────────────────────────
+     ┤
+     │ 06  │ 06-crew-matching.md      │ Ranked crew suggestions per requirement
+     │
+     ├─────┼──────────────────────────┼─────────────────────────────────────────
+     ┤
+     │ 07  │ 07-crew-assignment.md    │ Offer, accept, decline, withdraw
+     │
+     ├─────┼──────────────────────────┼─────────────────────────────────────────
+     ┤
+     │ 08  │ 08-dashboard.md          │ Three role-specific dashboard views
+     │
+     └─────┴──────────────────────────┴─────────────────────────────────────────
+     ┘
+
+     Matching (06) reads assignment data for its load penalty and its "already
+     offered" exclusion, so
+     it is only fully correct once 07 exists — noted in both specs. It is still
+     independently useful
+     before then, since with no assignments nothing is excluded.
+
+     Section template
+
+     Every spec uses the same headings, in this order:
+
+     1. Purpose — one paragraph, plus which product.md capability it delivers
+     2. Functional requirements — numbered FR-n
+     3. Non-functional requirements — numbered NFR-n
+     4. Business rules — numbered BR-n, each citing the data-model.md invariant
+        it enforces
+        (e.g. "BR-3 — enforces M3") so specs and model stay tied together
+     5. API — endpoint table (method, path, role, purpose), then per-endpoint
+        request/response
+        fields and error codes
+     6. Acceptance criteria — checkbox list, phrased as observable behaviour
+     7. Error handling — table of condition → status → error type
+
+     Cross-cutting conventions
+
+     Stated once in README.md, referenced from each spec rather than repeated:
+
+     - Errors are RFC 9457 ProblemDetail, already implemented in
+       backend/src/main/java/com/missioncontrol/platform/GlobalExceptionHandler.
+       java.
+     - Status codes — 400 validation, 401 unauthenticated, 403 wrong role, 404
+       not found,
+       409 domain-rule or state-transition violation.
+     - Cross-tenant access returns 404, not 403. A 403 would confirm the
+       resource exists in another
+       organisation, which leaks exactly what invariant T2 forbids. This is the
+       one security detail
+       worth stating loudly.
+     - All timestamps UTC in payloads (ISO-8601 with Z); the frontend converts.
+       Enums travel as
+       strings on the wire and are stored as integers — the JSON contract should
+       not expose the
+       pinned codes.
+     - List endpoints take page and size, default size=20.
+     - Every endpoint is /api/**, documented via springdoc, and reachable by the
+       generated TS client.
+
+     Notable per-spec content
+
+     02 — Authentication. Requires changing access-token-ttl in application.yml
+     from PT15M to
+     PT8H, and replacing the permitAll() in SecurityConfig with the real policy
+     behind its
+     existing TODO(auth). The spec records these as work to do; this task does 
+     not make the code
+     change.
+
+     04 — Mission management. Carries M5 (editing an APPROVED or ACTIVE mission
+     reverts it to PLAN)
+     and the start precondition. RequiredSkill is embedded in the requirement
+     payload rather than
+     given its own endpoints — fewer round trips, and a requirement's skills are
+     meaningless alone.
+
+     06 — Crew matching. Hard filters first, then score. Mandatory and preferred
+     skills score in
+     opposite directions, which is the heart of this feature:
+
+     filters:  available over [startsAt, endsAt]        (overlap rule, per A3)
+               every mandatory skill at >= minimumProficiency
+               no existing non-terminal assignment on this mission (A5)
+
+     MANDATORY skill i  - conserve headroom, lower is better
+         excess = proficiency - min                     >= 0, guaranteed by the
+     filter
+         fit    = 1 - excess / (5 - min)                1.0 at exactly the
+     minimum
+                                                        1.0 when min = 5 (no
+     headroom)
+
+     PREFERRED skill j  - capability, higher is better
+         met    = 1                    if proficiency >= min
+                = proficiency / min    if below the minimum (partial credit)
+                = 0                    if the skill is absent
+
+     skillScore = ( SUM_mandatory w.fit + SUM_preferred w.met ) / SUM_all w
+                  1.0 if the requirement lists no skills; w defaults to 1
+
+     score  =  skillScore                               0..1
+             + 0.1 x completedMissions                  capped at +0.3
+             - 0.1 x assignmentsLast90d                 capped at -0.3
+
+     Why mandatory skills prefer lower proficiency. Assigning an over-qualified
+     crew member spends
+     a scarce resource: they may be the only person eligible for a mission
+     demanding a higher minimum,
+     and a less-qualified member could have covered this one. Mandatory minimums
+     are the job's real
+     bar, so exceeding them buys nothing and costs option value. Preferred
+     skills are the opposite —
+     genuine upside, so more is better and a near miss still earns partial
+     credit.
+
+     Worked example, EVA (mandatory, min 3) + Robotics (preferred, min 4), both
+     weight 1:
+
+     ┌───────────┬─────┬──────────┬────────┬────────────┬──────────────────────┐
+     │ Candidate │ EVA │ Robotics │ fit /  │ skillScore │                      │
+     │           │     │          │  met   │            │                      │
+     ├───────────┼─────┼──────────┼────────┼────────────┼──────────────────────┤
+     │ A         │ 3   │ 4        │ 1.00 / │ 1.00       │ exact fit on both    │
+     │           │     │          │  1.00  │            │                      │
+     ├───────────┼─────┼──────────┼────────┼────────────┼──────────────────────┤
+     │ C         │ 3   │ 2        │ 1.00 / │ 0.75       │ under on preferred,  │
+     │           │     │          │  0.50  │            │ partial credit       │
+     ├───────────┼─────┼──────────┼────────┼────────────┼──────────────────────┤
+     │ B         │ 5   │ 4        │ 0.00 / │ 0.50       │ over-qualified on    │
+     │           │     │          │  1.00  │            │ mandatory            │
+     ├───────────┼─────┼──────────┼────────┼────────────┼──────────────────────┤
+     │ D         │ 2   │ 5        │ —      │ —          │ filtered out: fails  │
+     │           │     │          │        │            │ mandatory            │
+     └───────────┴─────┴──────────┴────────┴────────────┴──────────────────────┘
+
+     The experience bonus pulls mildly against the conservation term — a veteran
+     expert gains on one
+     and loses on the other. The ±0.3 caps keep it secondary to skillScore,
+     which spans a full 0–1.
+     Called out in the spec so it is a known trade-off rather than a surprise.
+
+     Results are transient — no MatchRun entity, per the existing data-model
+     decision.
+
+     07 — Crew assignment. The spec's centre of gravity is A4: the
+     schedule-overlap check runs
+     inside the accept transaction, not at offer time.
+
+     08 — Dashboard. One endpoint per role rather than a single polymorphic one,
+     so the generated
+     TypeScript client gets three concrete types instead of a union.
+
+     Changes to data-model.md
+
+     Two new invariants. The activation decision needs both, and the second
+     exists only because of
+     the first:
+
+     - M11 — APPROVED → ACTIVE requires every CrewRequirement to have
+       requiredCount ACCEPTED
+       assignments. It is a precondition of the transition, not a continuous
+       invariant: withdrawing
+       crew from an already-ACTIVE mission does not revert it.
+     - M12 — submitting for approval requires at least one CrewRequirement.
+       Without this, a
+       mission with no requirements is vacuously fully staffed and could be
+       started immediately —
+       a hole M11 opens up.
+
+     Two RequiredSkill field notes are now wrong and must be corrected, because
+     the ranking rules
+     changed what these fields do:
+
+     ┌───────────┬─────────────────────┬───────────────────────────────────────┐
+     │   Field   │    Current note     │             Corrected to              │
+     ├───────────┼─────────────────────┼───────────────────────────────────────┤
+     │           │ "true = hard        │ "true = hard filter and scored,       │
+     │ mandatory │ filter, false =     │ preferring the least over-qualified;  │
+     │           │ contributes to      │ false = optional, scored preferring   │
+     │           │ ranking"            │ higher proficiency"                   │
+     ├───────────┼─────────────────────┼───────────────────────────────────────┤
+     │ weight    │ "ranking weight for │ "ranking weight for any required      │
+     │           │  preferred skills"  │ skill; defaults to 1"                 │
+     └───────────┴─────────────────────┴───────────────────────────────────────┘
+
+     Files
+
+     ┌─────────────────────────────┬───────────────────────────────────────────┐
+     │            File             │                  Change                   │
+     ├─────────────────────────────┼───────────────────────────────────────────┤
+     │ docs/features/README.md +   │ New. Nine documents.                      │
+     │ 01–08                       │                                           │
+     ├─────────────────────────────┼───────────────────────────────────────────┤
+     │ docs/data-model.md          │ Add M11 and M12; correct the two          │
+     │                             │ RequiredSkill field notes.                │
+     └─────────────────────────────┴───────────────────────────────────────────┘
+
+     No code. No changes to product.md or architecture.md.
+
+     Verification
+
+     Documentation only — verification is review:
+
+     1. Coverage — every capability in product.md §3 and every role ability in
+        §2 is delivered by
+        exactly one spec, or is on the README's deferred list. No capability
+        silently unowned.
+     2. Incrementality — each spec is buildable using only the specs above it;
+        the dependency graph
+        is acyclic and matches the numbering.
+     3. Model consistency — every BR-n cites a real invariant from
+        data-model.md, and no spec
+        contradicts one. All entity and field names match the model exactly.
+     4. Module fit — endpoints sit in the module architecture.md says owns that
+        data; no spec
+        implies a mission → assignment dependency.
+     5. Structure — all nine files carry the seven required sections.
+     6. No code — nothing outside docs/ is touched.
+
+❯ This looks good. In the event of a tie for crew assignment, pick any one.     
+  Maybe extend assignmnentsLast90d to assignmentsLast1year                      
+
+● Two tweaks. Note that widening the window to a year makes the old coefficient
+  too blunt — at 0.1 per assignment the −0.3 cap is hit after just 3, which over
+  a full year would flatten most of the roster to the same penalty. I'll halve
+  it to 0.05 so the term still discriminates.
+
+● Updated plan
+  ⎿  /plan to preview
+
+● Now writing the specs. Starting with the index, which carries the conventions
+  the others reference.
+
+● Write(docs\features\README.md)
+  ⎿  Wrote 88 lines to docs\features\README.md
+      1 # Feature Specs
+      2 
+      3 Mission Control broken into incrementally buildable features. Eac
+      4 its own, on top of the ones before it.
+      5 
+      6 Read [`../product.md`](../product.md), [`../architecture.md`](../
+        architecture.md) and
+         all three.
+      8 
+      9 ## Build order
+     … +122 lines (ctrl+o to expand)
+
+● Write(docs\features\01-seed-data.md)
+  ⎿  Wrote 72 lines to docs\features\01-seed-data.md
+       1 # 01 — Seed Data
+       2 
+       4 
+       5 Populate the database with two organisations, users of every rol
+         e, a skill catalogue, and crew
+         ork against and multi-tenant
+       7 isolation can actually be demonstrated rather than asserted.
+       8 
+      10 [deferred](../README.md#deferred)), so seeding is the *only* way us
+         ers come to exist. Two
+     … +92 lines (ctrl+o to expand)
+
+● Write(docs\features\02-authentication.md)
+  ⎿  Wrote 106 lines to docs\features\02-authentication.md
+       1 # 02 — Authentication
+       3 ## Purpose
+       4 
+       5 Let a user exchange an email and password for a JWT, and make th
+       6 authorisation decision in the system: who you are, which organis
+         ation you belong to, and what your
+       8 
+       9 Delivers `product.md` §3 *Authentication*. This is the feature t
+         hat turns invariants T1 and T2
+          on it.
+     … +139 lines (ctrl+o to expand)
+
+● Write(docs\features\03-skill-catalogue.md)
+  ⎿  Wrote 96 lines to docs\features\03-skill-catalogue.md
+       1 # 03 — Skill Catalogue
+       3 ## Purpose
+       4 
+       5 Give each organisation a controlled vocabulary of skills. Crew p
+       6 catalogue and mission requirements ask for them, so matching com
+         pares identifiers rather than
+          synonym.
+       8 
+       9 Supports `product.md` §3 *Crew Matching*. Small, but a hard prer
+      10 until skills exist.
+     … +115 lines (ctrl+o to expand)
+
+● Write(docs\features\04-mission-management.md)
+  ⎿  Wrote 158 lines to docs\features\04-mission-management.md
+       1 # 04 — Mission Management
+       3 ## Purpose
+       4 
+       5 Let a Mission Lead create a mission, describe the crew it needs,
+       6 its lifecycle that do not involve a director: editing, starting,
+          and closing.
+       8 Delivers most of `product.md` §3 *Mission Management*. Approval 
+         transitions live in
+       9 [05](05-mission-approval.md); crew selection in [06](06-crew-mat
+      10 [07](07-crew-assignment.md).
+     … +209 lines (ctrl+o to expand)
+
+● Write(docs\features\05-mission-approval.md)
+  ⎿  Wrote 130 lines to docs\features\05-mission-approval.md
+       1 # 05 — Mission Approval
+       3 ## Purpose
+       4 
+       5 Put a director's decision between a planned mission and a crewed
+       6 plan; a Director approves or rejects it; a rejected plan can be 
+         revised and resubmitted, or
+       8 
+       9 Delivers the approval half of `product.md` §3 *Mission Managemen
+         t* and the whole of §4
+         d) because it is the only place
+     … +165 lines (ctrl+o to expand)
+
+● Now the matching spec — the one carrying the scoring rules.
+
+● Write(docs\features\06-crew-matching.md)
+  ⎿  Wrote 169 lines to docs\features\06-crew-matching.md
+       1 # 06 — Crew Matching
+       3 ## Purpose
+       4 
+       5 For a given crew requirement, produce a ranked list of crew memb
+       6 is a hard filter on availability and mandatory skills; ranking t
+         hen prefers the crew member who
+         ost qualified overall.
+       8 
+       9 Delivers `product.md` §3 *Crew Matching*. Read-only — it suggest
+      10 suggestion is [07](07-crew-assignment.md).
+     … +224 lines (ctrl+o to expand)
+
+● Write(docs\features\07-crew-assignment.md)
+  ⎿  Wrote 162 lines to docs\features\07-crew-assignment.md
+       1 # 07 — Crew Assignment
+       3 ## Purpose
+       4 
+       5 Turn a match suggestion into a real commitment. A Mission Lead o
+       6 crew member accepts or declines; either side can withdraw before
+          the mission closes. Accepting is
+         gnment history.
+       8 
+       9 Delivers the crew-selection part of `product.md` §3 *Mission Man
+      10 abilities in §2.
+     … +228 lines (ctrl+o to expand)
+
+● Write(docs\features\08-dashboard.md)
+  ⎿  Wrote 124 lines to docs\features\08-dashboard.md
+       1 # 08 — Dashboard
+       2 
+       4 
+       5 Give each role the screen it needs on login: a crew member sees 
+         the missions they are on, a
+         le organisation. Everything on
+       7 every dashboard is scoped to the caller's organisation.
+       8 
+         el composed from earlier features —
+      10 it introduces no new entity and no new business rule.
+     … +167 lines (ctrl+o to expand)
+
+● Now the data-model.md updates the specs depend on — M11, M12, and the two
+  stale field notes.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Now running the verification checklist from the plan.
+
+  Ran 1 shell command (ctrl+o to expand)
+● The grep only matched single-line rules — most BRs wrap and carry "enforces"
+  on a continuation line. Let me check properly.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● All 32 invariants are cited somewhere, and no spec cites one that doesn't
+  exist. The uncited BRs are authorization, algorithm and read-model rules —
+  legitimately not data invariants — so the README's claim that an uncited rule
+  means a gap is too strong. Fixing that.
+
+● Update(docs\features\README.md)
+  ⎿  Added 7 lines, removed 3 lines
+      39  Non-functional requirements (`NFR-n`), Business rules (`BR-n`),
+           API, Acceptance criteria, Error
+      40  handling.
+      41  
+      42 -Each `BR-n` cites the invariant it enforces from [`../data-mode
+         -l.md`](../data-model.md#invariants)                            
+      43 -— for example *"enforces M3"*. If a rule has no invariant behin
+         -d it, that is a gap in one document                            
+      44 -or the other.                                                  
+      42 +Where a `BR-n` enforces an invariant from [`../data-model.md`](
+         +../data-model.md#invariants) it                                
+      43 +says so — *"enforces M3"* — which keeps the specs and the model
+         + tied together. Every invariant in                             
+      44 +the model is enforced by at least one spec.                    
+      45  
+      46 +Rules without a citation are the ones the model does not speak 
+         +to: who may call what, how the                                 
+      47 +matching algorithm scores, and what the dashboard read models m
+         +ean. Those belong to the spec, not                             
+      48 +to the data model.                                             
+      49 +                                                               
+      50  ## Conventions
+      51  
+      52  These apply to every spec and are not repeated in each one.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Done. Nine documents in docs/features/ (~1,100 lines), plus the data-model.md
+  updates they depend on. Nothing outside docs/ was touched.
+
+  The specs, in build order: seed data → authentication → skill catalogue →
+  mission management → mission approval → crew matching → crew assignment →
+  dashboard. Each has the seven sections you asked for, and the README carries
+  the conventions (error codes, tenancy, pagination) once rather than repeating
+  them eight times.
+
+  Verified, not just written:
+  - All 32 invariants in data-model.md are enforced by at least one spec, and no
+    spec cites an invariant that doesn't exist.
+  - Every capability in product.md §2–§3 is owned by exactly one spec or listed
+    as deferred — nothing silently unowned.
+  - All internal links resolve; the dependency graph is acyclic.
+  - Both 04 and 07 state the mission ⇸ assignment direction, so nothing implies
+    the cycle architecture.md forbids.
+
+  Your two tweaks are in. Ties break arbitrarily, with crewMemberId as a stable
+  secondary sort so the list doesn't reshuffle between calls. The load window is
+  now 365 days at 0.05 per assignment rather than 90 days at 0.1 — at the old
+  coefficient a year-long window would hit the −0.3 cap after just three
+  assignments and flatten most of the roster to an identical penalty.
+
+  Three things worth knowing:
+
+  data-model.md gained M11 and M12, and two RequiredSkill field notes were
+  factually wrong once mandatory skills started feeding the score — mandatory
+  claimed only preferred skills contribute to ranking, and weight claimed it
+  applied to preferred skills only. Both corrected.
+
+  I softened one line I'd written in the README. It originally said any business
+  rule without an invariant citation was a gap — but authorization rules, the
+  matching algorithm and dashboard read-model semantics legitimately have no
+  data invariant behind them. Overstating it would have sent someone hunting for
+  invariants that shouldn't exist.
+
+  One rule sits on the line: BR-10 in mission management ("requirements are only
+  editable in PLAN") is a real domain constraint I introduced, currently
+  spec-level rather than an invariant. It's defensible as a workflow rule, but
+  if you'd rather it were enforced model-wide it should become M13.
+
+✻ Sautéed for 8m 12s
+
+❯ Start implementing 01-seed-data.md                                            
+
+● Reading the spec I'm implementing, then checking the current state.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Docker isn't running. Let me start it and check what's available for
+  generating the BCrypt hash.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Docker's starting. Writing the schema changesets meanwhile — identity first.
+
+● Write(backend\src\main\resources\db\changelog\modules\identity\001-create-iden
+       tity-tables.yaml)
+  ⎿  Wrote 144 lines to backend\src\main\resources\db\changelog\modules\ide
+     ntity\001-create-identity-tables.yaml
+       1 # identity module - schema
+       2 #
+         user).
+       4 #
+       5 # The table is `app_user`, not `user`: USER is a reserved word i
+       6 # would have to be quoted at every use site. This is the only pl
+         ace a table name
+       7 # departs from the entity name.
+       9   - changeSet:
+      10       id: identity-001-create-organisation
+     … +152 lines (ctrl+o to expand)
+
+● Write(backend\src\main\resources\db\changelog\modules\skill\001-create-skill-t
+       able.yaml)
+  ⎿  Wrote 70 lines to backend\src\main\resources\db\changelog\modules\skil
+     l\001-create-skill-table.yaml
+       1 # skill module - schema
+       2 #
+         quirements ask
+       4 # for them, so matching compares ids rather than strings.
+       5 #
+         o the identity
+       7 # module, and architecture.md forbids foreign keys across module
+          boundaries.
+       9   - changeSet:
+      10       id: skill-001-create-skill
+     … +68 lines (ctrl+o to expand)
+
+● Write(backend\src\main\resources\db\changelog\modules\crew\001-create-crew-tab
+       les.yaml)
+  ⎿  Wrote 106 lines to backend\src\main\resources\db\changelog\modules\cre
+     w\001-create-crew-tables.yaml
+       1 # crew module - schema
+       3 # CrewMember is the crew-domain profile for a user; CrewSkill is
+          their rated
+       4 # proficiency in a catalogue skill.
+       6 # Neither user_id nor skill_id carries a foreign key - app_user 
+         belongs to
+         gn keys across
+       8 # module boundaries. crew_skill -> crew_member is within this mo
+         dule, so that
+      10 databaseChangeLog:
+     … +107 lines (ctrl+o to expand)
+
+● Now generating the BCrypt hash — checking Docker is up first.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Hash verified ($2a$10$, 10 rounds — matching Spring Security's defaults).
+  Checking the Liquibase version so I use the right context attribute.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Liquibase 4.31.1, so contextFilter is available. Writing the seed data.
+
+● Write(backend\src\main\resources\db\changelog\modules\identity\002-seed-identi
+       ty.yaml)
+  ⎿  Wrote 73 lines to backend\src\main\resources\db\changelog\modules\iden
+     tity\002-seed-identity.yaml
+       1 # identity module - seed data
+       3 # Two organisations, each with a director, two mission leads and
+          a crew roster.
+         onstrate T2.
+       5 #
+         ted one:
+       7 #   a0.. / b0..  organisation      a1.. / b1..  app_user
+       9 # The leading nibble is the organisation. Fixed ids make the see
+         d idempotent and
+         er Liquibase runs
+     … +164 lines (ctrl+o to expand)
+
+● Write(backend\src\main\resources\db\changelog\modules\skill\002-seed-skills.ya
+       ml)
+  ⎿  Wrote 39 lines to backend\src\main\resources\db\changelog\modules\skil
+     l\002-seed-skills.yaml
+       1 # skill module - seed data
+       3 # Both catalogues deliberately share several names - EVA Operati
+         ons, Robotics,
+          separate rows
+       5 # with separate ids. That is what demonstrates invariant S1: uni
+       6 # to the organisation, so two tenants can use the same vocabular
+         y without sharing
+       8 #
+       9 # Helios additionally has Solar Array Maintenance, which Orbital
+      10 # not, so the catalogues are not merely mirror images.
+     … +80 lines (ctrl+o to expand)
+
+● Write(backend\src\main\resources\db\changelog\modules\crew\002-seed-crew.yaml)
+  ⎿  Wrote 120 lines to backend\src\main\resources\db\changelog\modules\cre
+     w\002-seed-crew.yaml
+       1 # crew module - seed data
+       3 # One CrewMember per CREW_MEMBER user, plus 2-4 rated skills eac
+         h.
+       5 # The Orbital Dynamics roster is built so the worked example in
+       6 # docs/features/06-crew-matching.md reproduces exactly against s
+       7 # requirement of EVA Operations (mandatory, min 3) + Robotics (p
+         referred, min 4):
+       9 #   Ada Kowalski   EVA 3, Robotics 4   fit 1.00 / met 1.00  -> 1
+         .00   ranked first
+         .75
+     … +197 lines (ctrl+o to expand)
+
+● Now wiring up the Liquibase contexts so seed data is excluded by default
+  (NFR-3).
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Now the real test — a clean database, which also verifies whether includeAll
+  recurses into module subdirectories.
+
+  Ran 3 shell commands (ctrl+o to expand)
+
+● Backend is up. Now checking whether Liquibase actually picked up the nested
+  module changelogs.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● includeAll does recurse — all 16 changesets applied in path order, seed ones
+  correctly tagged. Now verifying the data against each acceptance criterion.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Now the tenant-isolation check and the matching worked example.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● The worked example reproduces exactly — Ada 1.000, Chen 0.750, Bruno 0.500,
+  Dana excluded. Now testing idempotency and that the constraints actually bite.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● All constraints bite correctly — including the important one: the same skill
+  name is allowed in a different organisation. Now verifying NFR-3, that seed
+  data is excluded without the seed context.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● That blocks — spring-boot:run doesn't exit. But Liquibase runs at startup, so
+  the migration has already happened. Let me check the result directly.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● NFR-3 confirmed: 11 schema changesets ran, 0 seed changesets, tables empty.
+  Cleaning up the scratch database.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Background command "Verify seed excluded without seed context" completed (exit
+code 0)
+
+● Now the last acceptance criterion — documenting the seed credentials in the
+  README.
+
+  Ran 1 shell command (ctrl+o to expand)
+
+● Update(README.md)
+  ⎿  Added 28 lines
+      50  The first build downloads the Maven and npm dependency trees an
+          d takes a few minutes.
+      51  Subsequent builds reuse cached layers and the `maven-cache` vol
+          ume.
+      52  
+      53 +### Seed data                                                  
+      54 +                                                               
+      55 +The local and docker profiles load two fictional organisations 
+         +so multi-tenant behaviour can be                               
+      56 +exercised rather than assumed. See [`docs/features/01-seed-data
+         +.md`](../docs/features/01-seed-data.md).                          
+      57 +                                                               
+      58 +**Every seeded user has the password `Password123!`**          
+      59 +                                                               
+      60 +| Organisation | Role | Email |                                
+      61 +| --- | --- | --- |                                            
+      62 +| Orbital Dynamics | Director | `vera.lindholm@orbitaldynamics.
+         +example` |                                                     
+      63 +| Orbital Dynamics | Mission Lead | `marcus.reyes@orbitaldynami
+         +cs.example` |                                                  
+      64 +| Orbital Dynamics | Mission Lead | `priya.raman@orbitaldynamic
+         +s.example` |                                                   
+      65 +| Orbital Dynamics | Crew (×8) | `ada.kowalski@`, `bruno.sato@`
+         +, `chen.ibarra@`, `dana.osei@`, `elif.novak@`, `farid.lindqvist
+         +@`, `greta.mbeki@`, `hugo.delacroix@` `orbitaldynamics.example`
+         + |                                                             
+      66 +| Helios Aerospace | Director | `tomas.eriksen@heliosaero.examp
+         +le` |                                                          
+      67 +| Helios Aerospace | Mission Lead | `sofia.mendes@heliosaero.ex
+         +ample` |                                                       
+      68 +| Helios Aerospace | Mission Lead | `daniel.okafor@heliosaero.e
+         +xample` |                                                      
+      69 +| Helios Aerospace | Crew (×6) | `ines.varga@`, `jonas.petrov@`
+         +, `kira.almeida@`, `liam.ferreira@`, `maya.tanaka@`, `nikolai.b
+         +erg@` `heliosaero.example` |                                   
+      70 +                                                               
+      71 +These credentials are demo data and are deliberately weak. Seed
+         + changesets are tagged with the                                
+      72 +Liquibase context `seed`, which only the `local` and `docker` p
+         +rofiles activate — a deployment                                
+      73 +that leaves `spring.liquibase.contexts` at its default gets the
+         + schema and none of this.                                      
+      74 +                                                               
+      75 +To run against a database with schema but no demo data:        
+      76 +                                                               
+      77 +```bash                                                        
+      78 +SPRING_LIQUIBASE_CONTEXTS=default docker compose up backend    
+      79 +```                                                            
+      80 +                                                               
+      81  ### Why `--watch`
+      82  
+      83  `docker compose up --watch` *syncs* changed files into the runn
+          ing containers rather than
+
+● Final check — module boundary test still passes and nothing else broke.
+
+  Ran 2 shell commands (ctrl+o to expand)
+
+● Feature 01 is implemented and verified end to end.
+
+  What was built — six Liquibase changelogs across three module directories,
+  following the ownership rule in architecture.md:
+
+  - identity/ — organisation, app_user (+ seed: 2 orgs, 20 users)
+  - skill/ — skill (+ seed: 8 skills for one org, 6 for the other)
+  - crew/ — crew_member, crew_skill (+ seed: 14 profiles, 39 rated skills)
+
+  Every acceptance criterion in the spec checks out against a live database:
+
+  ┌────────────────────────────────────┬────────────────────────────────────┐
+  │               Check                │               Result               │
+  ├────────────────────────────────────┼────────────────────────────────────┤
+  │ Both organisations present         │ Orbital Dynamics, Helios Aerospace │
+  ├────────────────────────────────────┼────────────────────────────────────┤
+  │ Roles per org (≥1 dir, ≥2 lead, ≥6 │ 1/2/8 and 1/2/6                    │
+  │  crew)                             │                                    │
+  ├────────────────────────────────────┼────────────────────────────────────┤
+  │ Crew users ↔ crew profiles         │ 14 ↔ 14                            │
+  ├────────────────────────────────────┼────────────────────────────────────┤
+  │ Skills per crew member             │ 2–3, none below 2                  │
+  ├────────────────────────────────────┼────────────────────────────────────┤
+  │ Overlapping skill names, distinct  │ 5 names shared, 10 distinct ids    │
+  │ rows                               │                                    │
+  ├────────────────────────────────────┼────────────────────────────────────┤
+  │ Cross-tenant references            │ 0                                  │
+  ├────────────────────────────────────┼────────────────────────────────────┤
+  │ Dangling references                │ 0                                  │
+  ├────────────────────────────────────┼────────────────────────────────────┤
+  │ BCrypt hashes                      │ 20/20 valid $2a$10$, 60 chars      │
+  ├────────────────────────────────────┼────────────────────────────────────┤
+  │ Idempotent restart                 │ row counts and changeset count     │
+  │                                    │ unchanged                          │
+  └────────────────────────────────────┴────────────────────────────────────┘
+
+  Two things worth reporting.
+
+  includeAll does recurse into module subdirectories — I wasn't certain and it's
+  load-bearing for the whole layout. It orders alphabetically by path (crew →
+  identity → skill), so crew seed rows reference users and skills that don't
+  exist yet at insert time. That's harmless only because architecture.md forbids
+  cross-module foreign keys, and fixed UUIDs make the references resolve once
+  everything has run. It's the first real payoff from that rule, and I've
+  documented it in the seed changelog.
+
+  The 06-crew-matching worked example now reproduces exactly against seed data.
+  I built the Orbital Dynamics roster so a requirement of EVA 
+  Operations(mandatory, min 3) + Robotics(preferred, min 4) yields Ada 1.000,
+  Chen 0.750, Bruno 0.500, and excludes Dana — the spec's table, run as SQL.
+  With no missions seeded, the experience and load terms are zero, so score
+  equals skillScore. There's a comment in the changelog warning that changing
+  those two proficiencies breaks the example.
+
+  I also verified the constraints reject bad data — case-different duplicate
+  email, role=9, proficiency=6, duplicate crew skill, and a same-name skill
+  within one org all fail; the same name in the other org succeeds, which is
+  invariant S1 working as intended.
+
+  Seed data stays out of a default run: against a scratch database with
+  contexts=default, 11 schema changesets applied and 0 seed changesets, tables
+  empty.
+
+  Credentials are in the README. Everything is uncommitted.
+
+✻ Baked for 25m 38s
+
+※ recap: We're building Mission Control incrementally from its feature specs; seed data (feature 01) is now implemented and verified against a live database, with everything still uncommitted. Next up is feature 02, authentication. (disable recaps in /config)

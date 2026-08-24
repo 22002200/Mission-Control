@@ -1,0 +1,73 @@
+# identity module - seed data
+#
+# Two organisations, each with a director, two mission leads and a crew roster.
+# Two rather than one because a single-tenant dataset cannot demonstrate T2.
+#
+# Every seeded id is a fixed, readable UUID rather than a generated one:
+#   a0.. / b0..  organisation      a1.. / b1..  app_user
+#   a2.. / b2..  skill             a3.. / b3..  crew_member
+# The leading nibble is the organisation. Fixed ids make the seed idempotent and
+# let other modules reference these rows without caring what order Liquibase runs
+# the module changelogs in - which matters, because `includeAll` orders them
+# alphabetically (crew, identity, skill), not by dependency. That is safe only
+# because architecture.md forbids foreign keys across module boundaries.
+#
+# All seeded users share the password `Password123!`. The hash below is BCrypt,
+# cost 10, $2a$ - the defaults Spring Security's BCryptPasswordEncoder produces.
+#
+# contextFilter: seed keeps this out of any run that does not ask for it. See
+# spring.liquibase.contexts in application.yml.
+databaseChangeLog:
+  - changeSet:
+      id: identity-seed-001-organisations
+      author: mission-control
+      contextFilter: seed
+      comment: Two tenants, so cross-tenant isolation can be tested rather than assumed.
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO organisation (id, name, created_at) VALUES
+                ('a0000000-0000-0000-0000-000000000001', 'Orbital Dynamics', '2026-01-05 09:00:00+00'),
+                ('b0000000-0000-0000-0000-000000000001', 'Helios Aerospace', '2026-01-05 09:00:00+00');
+      rollback:
+        - sql:
+            sql: DELETE FROM organisation WHERE id IN ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001');
+
+  - changeSet:
+      id: identity-seed-002-users
+      author: mission-control
+      contextFilter: seed
+      comment: >-
+        role: 1 DIRECTOR, 2 MISSION_LEAD, 3 CREW_MEMBER. status: 1 ACTIVE.
+        Orbital Dynamics has 8 crew, Helios 6 - both above the 6 the spec asks for
+        on at least one tenant, and different sizes so a hard-coded count in a test
+        fails loudly.
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO app_user (id, organisation_id, email, password_hash, full_name, role, status, created_at, updated_at) VALUES
+                -- Orbital Dynamics
+                ('a1000000-0000-0000-0000-000000000001', 'a0000000-0000-0000-0000-000000000001', 'vera.lindholm@orbitaldynamics.example',   '$2a$10$R2yGIITS2Q3tIoxbpvtxteO1M5x/TP2fKRYh47UVoNb3I.98iSBR.', 'Vera Lindholm',    1, 1, '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('a1000000-0000-0000-0000-000000000002', 'a0000000-0000-0000-0000-000000000001', 'marcus.reyes@orbitaldynamics.example',    '$2a$10$R2yGIITS2Q3tIoxbpvtxteO1M5x/TP2fKRYh47UVoNb3I.98iSBR.', 'Marcus Reyes',     2, 1, '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('a1000000-0000-0000-0000-000000000003', 'a0000000-0000-0000-0000-000000000001', 'priya.raman@orbitaldynamics.example',     '$2a$10$R2yGIITS2Q3tIoxbpvtxteO1M5x/TP2fKRYh47UVoNb3I.98iSBR.', 'Priya Raman',      2, 1, '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('a1000000-0000-0000-0000-000000000004', 'a0000000-0000-0000-0000-000000000001', 'ada.kowalski@orbitaldynamics.example',    '$2a$10$R2yGIITS2Q3tIoxbpvtxteO1M5x/TP2fKRYh47UVoNb3I.98iSBR.', 'Ada Kowalski',     3, 1, '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('a1000000-0000-0000-0000-000000000005', 'a0000000-0000-0000-0000-000000000001', 'bruno.sato@orbitaldynamics.example',      '$2a$10$R2yGIITS2Q3tIoxbpvtxteO1M5x/TP2fKRYh47UVoNb3I.98iSBR.', 'Bruno Sato',       3, 1, '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('a1000000-0000-0000-0000-000000000006', 'a0000000-0000-0000-0000-000000000001', 'chen.ibarra@orbitaldynamics.example',     '$2a$10$R2yGIITS2Q3tIoxbpvtxteO1M5x/TP2fKRYh47UVoNb3I.98iSBR.', 'Chen Ibarra',      3, 1, '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('a1000000-0000-0000-0000-000000000007', 'a0000000-0000-0000-0000-000000000001', 'dana.osei@orbitaldynamics.example',       '$2a$10$R2yGIITS2Q3tIoxbpvtxteO1M5x/TP2fKRYh47UVoNb3I.98iSBR.', 'Dana Osei',        3, 1, '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('a1000000-0000-0000-0000-000000000008', 'a0000000-0000-0000-0000-000000000001', 'elif.novak@orbitaldynamics.example',      '$2a$10$R2yGIITS2Q3tIoxbpvtxteO1M5x/TP2fKRYh47UVoNb3I.98iSBR.', 'Elif Novak',       3, 1, '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('a1000000-0000-0000-0000-000000000009', 'a0000000-0000-0000-0000-000000000001', 'farid.lindqvist@orbitaldynamics.example', '$2a$10$R2yGIITS2Q3tIoxbpvtxteO1M5x/TP2fKRYh47UVoNb3I.98iSBR.', 'Farid Lindqvist',  3, 1, '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('a1000000-0000-0000-0000-000000000010', 'a0000000-0000-0000-0000-000000000001', 'greta.mbeki@orbitaldynamics.example',     '$2a$10$R2yGIITS2Q3tIoxbpvtxteO1M5x/TP2fKRYh47UVoNb3I.98iSBR.', 'Greta Mbeki',      3, 1, '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('a1000000-0000-0000-0000-000000000011', 'a0000000-0000-0000-0000-000000000001', 'hugo.delacroix@orbitaldynamics.example',  '$2a$10$R2yGIITS2Q3tIoxbpvtxteO1M5x/TP2fKRYh47UVoNb3I.98iSBR.', 'Hugo Delacroix',   3, 1, '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                -- Helios Aerospace
+                ('b1000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'tomas.eriksen@heliosaero.example',        '$2a$10$R2yGIITS2Q3tIoxbpvtxteO1M5x/TP2fKRYh47UVoNb3I.98iSBR.', 'Tomas Eriksen',    1, 1, '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('b1000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000001', 'sofia.mendes@heliosaero.example',         '$2a$10$R2yGIITS2Q3tIoxbpvtxteO1M5x/TP2fKRYh47UVoNb3I.98iSBR.', 'Sofia Mendes',     2, 1, '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('b1000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000001', 'daniel.okafor@heliosaero.example',        '$2a$10$R2yGIITS2Q3tIoxbpvtxteO1M5x/TP2fKRYh47UVoNb3I.98iSBR.', 'Daniel Okafor',    2, 1, '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('b1000000-0000-0000-0000-000000000004', 'b0000000-0000-0000-0000-000000000001', 'ines.varga@heliosaero.example',           '$2a$10$R2yGIITS2Q3tIoxbpvtxteO1M5x/TP2fKRYh47UVoNb3I.98iSBR.', 'Ines Varga',       3, 1, '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('b1000000-0000-0000-0000-000000000005', 'b0000000-0000-0000-0000-000000000001', 'jonas.petrov@heliosaero.example',         '$2a$10$R2yGIITS2Q3tIoxbpvtxteO1M5x/TP2fKRYh47UVoNb3I.98iSBR.', 'Jonas Petrov',     3, 1, '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('b1000000-0000-0000-0000-000000000006', 'b0000000-0000-0000-0000-000000000001', 'kira.almeida@heliosaero.example',         '$2a$10$R2yGIITS2Q3tIoxbpvtxteO1M5x/TP2fKRYh47UVoNb3I.98iSBR.', 'Kira Almeida',     3, 1, '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('b1000000-0000-0000-0000-000000000007', 'b0000000-0000-0000-0000-000000000001', 'liam.ferreira@heliosaero.example',        '$2a$10$R2yGIITS2Q3tIoxbpvtxteO1M5x/TP2fKRYh47UVoNb3I.98iSBR.', 'Liam Ferreira',    3, 1, '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('b1000000-0000-0000-0000-000000000008', 'b0000000-0000-0000-0000-000000000001', 'maya.tanaka@heliosaero.example',          '$2a$10$R2yGIITS2Q3tIoxbpvtxteO1M5x/TP2fKRYh47UVoNb3I.98iSBR.', 'Maya Tanaka',      3, 1, '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00'),
+                ('b1000000-0000-0000-0000-000000000009', 'b0000000-0000-0000-0000-000000000001', 'nikolai.berg@heliosaero.example',         '$2a$10$R2yGIITS2Q3tIoxbpvtxteO1M5x/TP2fKRYh47UVoNb3I.98iSBR.', 'Nikolai Berg',     3, 1, '2026-01-05 09:00:00+00', '2026-01-05 09:00:00+00');
+      rollback:
+        - sql:
+            sql: DELETE FROM app_user WHERE organisation_id IN ('a0000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001');

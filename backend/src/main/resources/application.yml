@@ -22,6 +22,11 @@ spring:
 
   liquibase:
     change-log: classpath:db/changelog/db.changelog-master.yaml
+    # Schema changesets carry no context and always run. Demo data is tagged
+    # `seed` and runs only when `seed` is an active context, which the local and
+    # docker profiles switch on. A deployment that leaves this at the default
+    # gets the schema and none of the fictional organisations.
+    contexts: ${LIQUIBASE_CONTEXTS:default}
 
   threads:
     virtual:

@@ -1,6 +1,9 @@
 # Active when running the backend on the host (e.g. from IntelliJ) against a
 # Dockerised Postgres published on localhost:5432.
 spring:
+  liquibase:
+    # Load the demo organisations, users, skills and crew profiles.
+    contexts: default,seed
   datasource:
     url: jdbc:postgresql://localhost:${POSTGRES_PORT:5432}/${POSTGRES_DB:missioncontrol}
 

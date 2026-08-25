@@ -23,14 +23,9 @@ adding the next one.
 | API client| Generated from the OpenAPI spec by `@hey-api/openapi-ts`                |
 | Local dev | Docker Compose v5                                                       |
 
-> **Note on Spring Boot 3.5.16.** Free OSS support for the 3.5 line ended 30 June 2026, and
-> 3.5.16 is its final community release. This was a deliberate choice, but it means no free
-> security patches. Moving to Boot 4.x later also requires Spring Modulith 2.x and
-> springdoc 3.x — those three versions must move together.
-
 ## Prerequisites
 
-- **Docker Desktop** (tested on 29.7.2 / Compose v5.4.0). This is the only hard requirement —
+- **Docker Desktop** 29.7.2 / Compose v5.4.0. This is the only hard requirement —
   the full stack builds and runs in containers.
 - **JDK 21** and **Node 24**, only if you want to run either side directly on the host.
   Neither is needed for the Docker workflow.
@@ -122,28 +117,10 @@ Three things worth knowing:
 - **An unknown email and a wrong password return the identical 401**, deliberately, so login cannot
   be used to discover which addresses have accounts.
 
-`/api/system/info` is now behind authentication too, so the frontend shows it only once signed in.
-That is the intended behaviour, not a regression.
-
-In the UI, signing in reveals an account menu pinned to the top-right corner: the user's name with
-a dropdown arrow, opening onto their role, organisation and a **Sign out** item.
-
 ## Skill catalogue
 
 Read-only so far. Every role may read; creating, editing and retiring skills are director-only and
 not yet built. See [`docs/features/03-skill-catalogue.md`](docs/features/03-skill-catalogue.md).
-
-| Method | Path | Purpose |
-| --- | --- | --- |
-| GET | `/api/skills` | One page of the caller's organisation's catalogue, sorted by name |
-| GET | `/api/skills/{id}` | One skill |
-
-`GET /api/skills` takes four optional query parameters: `active` (boolean), `search` (a
-case-insensitive substring of the name), `page` (default 0) and `size` (default 50, maximum 200).
-
-```bash
-curl -s "localhost:8080/api/skills?search=systems&size=5" -H "Authorization: Bearer $TOKEN"
-```
 
 Two things worth knowing:
 
@@ -160,30 +137,6 @@ their organisation and decide whether a plan goes ahead. Matching and crew assig
 see [`docs/features/04-mission-management.md`](docs/features/04-mission-management.md) and
 [`docs/features/05-mission-approval.md`](docs/features/05-mission-approval.md).
 
-| Method | Path | Role | Purpose |
-| --- | --- | --- | --- |
-| GET | `/api/missions` | any | One page, scoped by role |
-| POST | `/api/missions` | MISSION_LEAD | Create, in `PLAN` |
-| GET | `/api/missions/{id}` | any with visibility | One mission with its requirements |
-| PATCH | `/api/missions/{id}` | owner or DIRECTOR | Edit name, description or dates |
-| POST | `/api/missions/{id}/start` | owner or DIRECTOR | `APPROVED` to `ACTIVE` |
-| POST | `/api/missions/{id}/close` | owner or DIRECTOR | Close, which is also how a mission is aborted |
-| POST | `/api/missions/{id}/requirements` | owner | Add a staffing line |
-| PATCH | `/api/missions/{id}/requirements/{reqId}` | owner | Replace one, skills included |
-| DELETE | `/api/missions/{id}/requirements/{reqId}` | owner | Remove one |
-| POST | `/api/missions/{id}/submit` | owner | `PLAN` to `PENDING_APPROVAL` |
-| POST | `/api/missions/{id}/approve` | DIRECTOR | `PENDING_APPROVAL` to `APPROVED` |
-| POST | `/api/missions/{id}/reject` | DIRECTOR | `PENDING_APPROVAL` to `REJECTED`, with a reason |
-| POST | `/api/missions/{id}/replan` | owner | `REJECTED` back to `PLAN` |
-| GET | `/api/missions/{id}/approvals` | any with visibility | Every decision cycle, newest first |
-
-`GET /api/missions` takes `status` (**repeatable** - `?status=PLAN&status=APPROVED`), `search`,
-`page` and `size` (default 20, maximum 100). It is sorted by start date.
-
-```bash
-curl -s "localhost:8080/api/missions?status=ACTIVE&status=CLOSED" -H "Authorization: Bearer $TOKEN"
-```
-
 Four things worth knowing:
 
 - **The list is scoped by role.** A Mission Lead sees the missions they own, a Director sees every
@@ -193,20 +146,14 @@ Four things worth knowing:
   for a caller who genuinely can see the mission but may not change it.
 - **Editing an `APPROVED` or `ACTIVE` mission sends it back to `PLAN`.** The approval described a
   plan that no longer exists, so it has to be resubmitted. The UI warns before you save.
-- **`POST /start` needs a full crew.** Staffing counts come from the assignment module, so a
-  mission only starts once every requirement has as many acceptances as it asked for. Until
-  feature 07 that could never happen and the call always failed; now it is a real precondition
-  rather than a missing one.
+- **Starting an approved mission needs a full crew.** Staffing counts come from the assignment module, so a
+  mission only starts once every requirement has as many acceptances as it asked for.
 
 ### Approval
 
 A Mission Lead submits a plan; a Director approves or rejects it; a rejected plan is revised and
-resubmitted, or abandoned. This is the only place in the product where the roles genuinely divide -
-and because a Director cannot own a mission, a Director can never approve their own work.
-
-```bash
-curl -s -X POST "localhost:8080/api/missions/$ID/reject" -H "Authorization: Bearer $TOKEN"   -H 'Content-Type: application/json' -d '{"comment":"The window clashes with the Vesta flyby."}'
-```
+resubmitted, or abandoned. Because a Director cannot own a mission, a Director can never approve
+their own work.
 
 Four things worth knowing:
 
@@ -239,28 +186,34 @@ fell on another page.
 Times are entered and displayed in your own timezone and stored as UTC. Everything goes through
 `frontend/src/lib/datetime.ts`.
 
+### Crew matching
+
+A Mission Lead or Director can run the crew matching engine at any time; however, offers can only
+be made if the mission is approved. The crew matching algorithm takes into account a crew member's
+availability during the entire mission timeline, the crew member's skill profile, and their
+assignment history for tie breakers. See [`docs/features/06-crew-matching.md`]. A crew member's
+availability is determined solely by whether they are assigned to a mission.
+
+Three things worth knowing:
+
+- **The engine prefers crew members with lower proficiency for mandatory requirements.** If two
+  crew members have both satisfy a mandatory requirement, it will prefer the crew member with lower
+  proficiency. This is to free up crew members with higher proficiency for missions with higher
+  requirements. The algorithm differs for preferred requirements.
+- **Availability must match the full timeline.** A crew member must be available for the entire
+  duration of the mission timeline to be considered eligible.
+- **Assignment history both supports and penalises the score.** Crew members get a higher score
+  if they have more completed assignments, with a cap of +0.3, but they will be penalised for
+  recent assignments calculated over a window, with a cap of -0.3. This is to break ties if two
+  crew members have the same score based on skill profile, and to prefer crew members with more
+  experience but also allow even distribution of assignments amongst crew members.
+
 ### Crew assignment
 
 A Mission Lead offers places on an approved mission; the crew member accepts or declines; the lead
 can withdraw somebody at any point before the mission closes. Accepting is what consumes a crew
 member's availability and builds their assignment history. See
 [`docs/features/07-crew-assignment.md`](docs/features/07-crew-assignment.md).
-
-| Method | Path | Role | Purpose |
-| --- | --- | --- | --- |
-| POST | `/api/missions/{id}/assignments` | owner | Offer a crew member a place |
-| GET | `/api/missions/{id}/assignments` | owner or DIRECTOR | The mission's crew, by requirement |
-| GET | `/api/assignments/me` | CREW_MEMBER | The caller's own assignments |
-| POST | `/api/assignments/{id}/accept` | CREW_MEMBER (self) | Take the place |
-| POST | `/api/assignments/{id}/decline` | CREW_MEMBER (self) | Turn it down |
-| POST | `/api/assignments/{id}/withdraw` | owner | Take it back |
-
-`GET /api/assignments/me` takes `status`, `timeframe` (`CURRENT`, `UPCOMING` or `PAST`), `page` and
-`size`.
-
-```bash
-curl -s -X POST "localhost:8080/api/missions/$ID/assignments" -H "Authorization: Bearer $TOKEN"   -H 'Content-Type: application/json'   -d '{"crewRequirementId":"'$REQ'","crewMemberId":"'$CREW'"}'
-```
 
 Five things worth knowing:
 
@@ -290,15 +243,6 @@ In the UI, offering happens on the crew matching board, where the reasoning for 
 candidate over another is visible; withdrawing is on the mission page, under the requirement, where
 a director reads the same list with no buttons on it. A crew member sees **Your assignments** above
 their mission board, with pending offers pinned to the top.
-
-### A note on styling
-
-MUI throughout, themed in `src/theme.ts`. The hand-rolled `mc-` classes that used to dress the
-shell and the login form are gone: they were a reasonable trade while there was one authenticated
-screen, and stopped being one at several. `src/index.css` is now just the palette custom properties
-and the page background, which has to be painted before React mounts or the first frame is a white
-flash on a dark application. The colours are duplicated between the two files deliberately - see
-the comment in `theme.ts`.
 
 ### Why `--watch`
 
@@ -331,15 +275,6 @@ docker compose up -d db frontend
 
 Then run `MissionControlApplication` from the IDE with the **`local`** profile active.
 The `local` profile points the datasource at `localhost:5432`.
-
-`java` on this machine's `PATH` is Java 11, and `JAVA_HOME` is unset. For host-side builds:
-
-```powershell
-setx JAVA_HOME "C:\Users\61449\.jdks\temurin-21.0.12"
-```
-
-Open a **new** terminal afterwards. If you forget, `maven-enforcer-plugin` fails the build with
-an explanatory message rather than an obscure bytecode error.
 
 ### Production-shaped build
 
@@ -396,13 +331,7 @@ output stable and pleasant to consume; both have comments explaining why:
 
 **Integration tests do not run in the dev container.** They use Testcontainers, which needs a
 Docker socket, and the backend service has none - so `./mvnw test` inside Compose stays
-container-free and the `*IT` classes are bound to `verify` via failsafe instead. Run those on the
-host, where Docker Desktop is available. Host builds need JDK 21:
-
-```bash
-cd backend
-JAVA_HOME="C:/Users/61449/.jdks/temurin-21.0.12" ./mvnw verify
-```
+container-free and the `*IT` classes are bound to `verify` via failsafe instead.
 
 All the integration tests share a single container and a single Spring context. Because they also
 share one database, each test class works with its own seeded accounts - see the note in
@@ -436,12 +365,16 @@ docker compose down -v
 
 ## Current limitations
 
-These are deliberate, not oversights:
+These are current limitations that have not been built:
 
 - **No refresh tokens, and logout is global.** An expired session means logging in again, and
   signing out on one device signs out everywhere.
-- **No user management.** Accounts exist only because feature 01 seeds them; there is no
+- **No user management.** Accounts exist because feature 01 seeds them; there is currently no
   registration, invite or password-reset flow.
+- **No organisation management.** Organisations exist because feature 01 seeds them; there is
+  currently no onboarding or offboarding for organisations.
+- **No skill profile management.** Skill profiles for each organisation exist because feature 03
+  seeds them; there is currently no creating or updating of skills.
 - **A crew matching draft is never saved.** Suggestions are worked out fresh on each request, and
   a draft is client state until the lead presses Offer. Nothing records *why* a crew member was
   suggested either - match runs are transient, so there is no audit of a ranking.
@@ -450,7 +383,5 @@ These are deliberate, not oversights:
 - **A place vacated on a running mission cannot be refilled.** Offers may only be made while a
   mission is `APPROVED`, so re-crewing an `ACTIVE` one means editing it back to `PLAN` and having
   it approved again. That is the strict reading of invariant A1 and it is deliberate.
-- **No dashboards.** Feature 08 gives each role a landing screen; until then a crew member's
-  offers appear as a section above the mission board.
 - **Demo secrets.** `JWT_SECRET` and the database password in `.env.example` are development
   values. Nothing here is a deployment manifest.

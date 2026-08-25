@@ -81,12 +81,7 @@ class MissionLifecycleIT extends AbstractIntegrationTest {
                 .requiredSkills(new LinkedHashSet<>())
                 .build();
         requirement.replaceWith("Flight Engineer", null, crew, java.util.List.of(
-                RequiredSkillEntity.builder()
-                        .id(new RequiredSkillId(null, EVA_SKILL))
-                        .minimumProficiency((short) 3)
-                        .mandatory(true)
-                        .weight(1)
-                        .build()));
+                new RequiredSkillValues(EVA_SKILL, (short) 3, true, 1)));
         mission.addRequirement(requirement, Instant.parse("2026-06-01T10:00:00Z"));
         return missions.saveAndFlush(mission);
     }

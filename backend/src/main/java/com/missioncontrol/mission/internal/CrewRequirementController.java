@@ -47,7 +47,8 @@ class CrewRequirementController {
     @PostMapping
     @Operation(
             summary = "Add a crew requirement",
-            description = "Only the owning mission lead, and only while the mission is in PLAN.")
+            description = "Only the owning mission lead, and only while the mission is in PLAN."
+    )
     @ApiResponse(responseCode = "201", description = "The new requirement")
     @ApiResponse(responseCode = "400", description = "A field is invalid",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
@@ -61,8 +62,7 @@ class CrewRequirementController {
             + "twice, or a skill is unknown or retired",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     @ResponseStatus(HttpStatus.CREATED)
-    CrewRequirementResponse addRequirement(@PathVariable UUID missionId,
-                                           @Valid @RequestBody CrewRequirementRequest request) {
+    CrewRequirementResponse addRequirement(@PathVariable UUID missionId, @Valid @RequestBody CrewRequirementRequest request) {
         return requirements.add(missionId, request);
     }
 
@@ -71,7 +71,8 @@ class CrewRequirementController {
             summary = "Replace a crew requirement",
             description = "Replaces the requirement whole, skills included. A skill absent from "
                     + "the request is removed, because there is no meaningful partial update of a "
-                    + "set.")
+                    + "set."
+    )
     @ApiResponse(responseCode = "200", description = "The updated requirement")
     @ApiResponse(responseCode = "400", description = "A field is invalid",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
@@ -79,8 +80,7 @@ class CrewRequirementController {
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     @ApiResponse(responseCode = "403", description = "The caller does not own this mission",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
-    @ApiResponse(responseCode = "404", description = "No such mission, or no such requirement on "
-            + "it",
+    @ApiResponse(responseCode = "404", description = "No such mission, or no such requirement on it",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     @ApiResponse(responseCode = "409", description = "The mission has left PLAN, a skill is listed "
             + "twice, or a skill is unknown or retired",
@@ -94,19 +94,18 @@ class CrewRequirementController {
     @DeleteMapping("/{requirementId}")
     @Operation(
             summary = "Remove a crew requirement",
-            description = "Only the owning mission lead, and only while the mission is in PLAN.")
+            description = "Only the owning mission lead, and only while the mission is in PLAN."
+    )
     @ApiResponse(responseCode = "204", description = "Removed")
     @ApiResponse(responseCode = "401", description = "Not authenticated",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     @ApiResponse(responseCode = "403", description = "The caller does not own this mission",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
-    @ApiResponse(responseCode = "404", description = "No such mission, or no such requirement on "
-            + "it",
+    @ApiResponse(responseCode = "404", description = "No such mission, or no such requirement on it",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     @ApiResponse(responseCode = "409", description = "The mission has left PLAN",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
-    ResponseEntity<Void> deleteRequirement(@PathVariable UUID missionId,
-                                           @PathVariable UUID requirementId) {
+    ResponseEntity<Void> deleteRequirement(@PathVariable UUID missionId, @PathVariable UUID requirementId) {
         requirements.delete(missionId, requirementId);
         return ResponseEntity.noContent().build();
     }

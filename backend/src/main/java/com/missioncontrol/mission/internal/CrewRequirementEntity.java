@@ -10,7 +10,9 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.AccessLevel;
@@ -71,20 +73,37 @@ class CrewRequirementEntity {
     /**
      * Replaces the whole requirement, skills included.
      *
-     * <p>Wholesale rather than field by field because the skills arrive inline on the request -
-     * FR-8 - and a partial update of a set has no obvious meaning. Clearing and re-adding lets
-     * {@code orphanRemoval} delete the rows that went away, which a merge of the incoming list
-     * would not.
+     * <p>Wholesale from the caller's point of view, because the skills arrive inline on the request
+     * - FR-8 - and a partial update of a set has no obvious meaning. Underneath it reconciles
+     * rather than clearing: rows whose skill is still wanted are updated in place, rows whose skill
+     * has gone are removed, and only genuinely new skills become new rows.
+     *
+     * <p>Clearing the set and re-adding is the obvious implementation and it is wrong. The key of a
+     * required skill is {@code (crewRequirementId, skillId)}, so a skill that survives an edit gets
+     * a new instance carrying an identifier the removed one still holds. Hibernate does not order
+     * the delete before the insert within a flush, so it fails with 'a different object with the
+     * same identifier value was already associated with the session' - and it fails at the next
+     * query rather than here, which makes it look like a bug in whatever triggered the flush.
+     *
+     * <p>Reconciling is also simply the better write: an edit that only changes a proficiency
+     * emits one UPDATE instead of a DELETE and an INSERT.
      */
     void replaceWith(String title, String description, int requiredCount,
-                     Collection<RequiredSkillEntity> skills) {
+                     Collection<RequiredSkillValues> skills) {
         this.title = title;
         this.description = description == null || description.isBlank() ? null : description;
         this.requiredCount = requiredCount;
-        this.requiredSkills.clear();
-        skills.forEach(skill -> {
-            skill.attachTo(this);
-            this.requiredSkills.add(skill);
-        });
+
+        Map<UUID, RequiredSkillValues> wanted = new LinkedHashMap<>();
+        skills.forEach(skill -> wanted.put(skill.skillId(), skill));
+
+        // Gone from the request: orphanRemoval turns this into the DELETE.
+        this.requiredSkills.removeIf(existing -> !wanted.containsKey(existing.skillId()));
+
+        // Still wanted: update in place, and take it off the list of things to insert.
+        this.requiredSkills.forEach(existing -> existing.apply(wanted.remove(existing.skillId())));
+
+        // Whatever is left is new.
+        wanted.values().forEach(values -> this.requiredSkills.add(RequiredSkillEntity.of(this, values)));
     }
 }

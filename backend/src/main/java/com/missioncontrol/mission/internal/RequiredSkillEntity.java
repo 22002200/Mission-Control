@@ -71,8 +71,26 @@ class RequiredSkillEntity {
         return id.getSkillId();
     }
 
-    void attachTo(CrewRequirementEntity owner) {
-        this.requirement = owner;
-        this.id = new RequiredSkillId(owner.getId(), id.getSkillId());
+    /** A brand-new row on a requirement that does not already ask for this skill. */
+    static RequiredSkillEntity of(CrewRequirementEntity owner, RequiredSkillValues values) {
+        return RequiredSkillEntity.builder()
+                .id(new RequiredSkillId(owner.getId(), values.skillId()))
+                .requirement(owner)
+                .minimumProficiency(values.minimumProficiency())
+                .mandatory(values.mandatory())
+                .weight(values.weight())
+                .build();
+    }
+
+    /**
+     * Re-points an existing row at what the caller now wants.
+     *
+     * <p>Everything except the key. A row is only ever updated in place when its skill is
+     * unchanged, so touching the id here would be meaningless at best.
+     */
+    void apply(RequiredSkillValues values) {
+        this.minimumProficiency = values.minimumProficiency();
+        this.mandatory = values.mandatory();
+        this.weight = values.weight();
     }
 }

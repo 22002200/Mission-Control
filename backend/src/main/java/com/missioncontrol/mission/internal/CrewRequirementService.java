@@ -73,8 +73,7 @@ class CrewRequirementService {
     }
 
     @Transactional
-    CrewRequirementResponse update(UUID missionId, UUID requirementId,
-                                   CrewRequirementRequest request) {
+    CrewRequirementResponse update(UUID missionId, UUID requirementId, CrewRequirementRequest request) {
         MissionEntity mission = requireEditableMission(missionId);
         CrewRequirementEntity requirement = requireRequirement(mission, requirementId);
 
@@ -142,8 +141,7 @@ class CrewRequirementService {
      * <p>Unknown, retired and other-tenant skills all answer the same way. One bulk lookup covers
      * every skill on the requirement, because a lookup per skill is the N+1 that NFR-1 rules out.
      */
-    private List<RequiredSkillEntity> buildSkills(CrewRequirementRequest request,
-                                                  UUID organisationId) {
+    private List<RequiredSkillValues> buildSkills(CrewRequirementRequest request, UUID organisationId) {
         List<RequiredSkillRequest> requested = request.skillsOrEmpty();
 
         Set<UUID> distinct = new HashSet<>();
@@ -162,16 +160,13 @@ class CrewRequirementService {
         }
 
         return requested.stream()
-                .map(skill -> RequiredSkillEntity.builder()
-                        // The requirement half of the key is filled in on attach, once the owning
-                        // requirement is known.
-                        .id(new RequiredSkillId(null, skill.skillId()))
+                .map(skill -> new RequiredSkillValues(
+                        skill.skillId(),
                         // Narrowed to match the SMALLINT column; the request already bounds
                         // it to 1-5, so nothing can be lost here.
-                        .minimumProficiency(skill.minimumProficiency().shortValue())
-                        .mandatory(skill.mandatory())
-                        .weight(skill.weightOrDefault())
-                        .build())
+                        skill.minimumProficiency().shortValue(),
+                        skill.mandatory(),
+                        skill.weightOrDefault()))
                 .toList();
     }
 }

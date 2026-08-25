@@ -38,6 +38,7 @@ class MissionManagementIT extends AbstractIntegrationTest {
 
     private static final String EVA_SKILL_A = "a2000000-0000-0000-0000-000000000001";
     private static final String ROBOTICS_SKILL_A = "a2000000-0000-0000-0000-000000000002";
+    private static final String LIFE_SUPPORT_SKILL_A = "a2000000-0000-0000-0000-000000000003";
     private static final String EVA_SKILL_B = "b2000000-0000-0000-0000-000000000001";
 
     /** Seeded, owned by Marcus Reyes, and left in PLAN by the changelog. */
@@ -299,6 +300,140 @@ class MissionManagementIT extends AbstractIntegrationTest {
 
         mockMvc.perform(asUser(get("/api/missions/{id}", id), MISSION_LEAD_A))
                 .andExpect(jsonPath("$.requirements").isEmpty());
+    }
+
+    /**
+     * Adds a requirement asking for the given skills, and returns its id.
+     *
+     * <p>Each entry is {@code skillId:minimumProficiency}.
+     */
+    private String addRequirement(String missionId, String title, String... skills)
+            throws Exception {
+        String inline = java.util.Arrays.stream(skills)
+                .map(spec -> spec.split(":"))
+                .map(parts -> """
+                        {"skillId": "%s", "minimumProficiency": %s, "mandatory": true}
+                        """.formatted(parts[0], parts[1]))
+                .collect(java.util.stream.Collectors.joining(","));
+
+        MvcResult added = mockMvc.perform(asUser(
+                        json(post("/api/missions/{id}/requirements", missionId), """
+                                {"title": "%s", "requiredCount": 1, "skills": [%s]}
+                                """.formatted(title, inline)), MISSION_LEAD_A))
+                .andExpect(status().isCreated())
+                .andReturn();
+        return json(added).get("id").asText();
+    }
+
+    @Test
+    @DisplayName("A requirement can be edited while keeping a skill it already asks for")
+    void aRetainedSkillIsUpdatedInPlace() throws Exception {
+        // The regression this exists for: an edit that keeps a skill used to build a second
+        // RequiredSkillEntity carrying the identifier the removed one still held, and Hibernate
+        // refused it at the next flush. It surfaced as a 500 from whatever query flushed first,
+        // which pointed at the read path rather than at the write that caused it.
+        String id = createMission(MISSION_LEAD_A, "Retained skill");
+        String requirementId = addRequirement(id, "Engineer", EVA_SKILL_A + ":3");
+
+        mockMvc.perform(asUser(json(
+                        patch("/api/missions/{id}/requirements/{req}", id, requirementId), """
+                                {"title": "Senior Engineer", "requiredCount": 2,
+                                 "skills": [{"skillId": "%s", "minimumProficiency": 5,
+                                             "mandatory": false, "weight": 4}]}
+                                """.formatted(EVA_SKILL_A)), MISSION_LEAD_A))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Senior Engineer"))
+                .andExpect(jsonPath("$.skills.length()").value(1))
+                .andExpect(jsonPath("$.skills[0].skillName").value("EVA Operations"))
+                .andExpect(jsonPath("$.skills[0].minimumProficiency").value(5))
+                .andExpect(jsonPath("$.skills[0].mandatory").value(false))
+                .andExpect(jsonPath("$.skills[0].weight").value(4));
+    }
+
+    @Test
+    @DisplayName("Resending a requirement unchanged is accepted, which is what the edit form does")
+    void resubmittingTheSameSkillsIsAccepted() throws Exception {
+        // The form pre-populates the existing skills, so changing only the title sends every one
+        // of them straight back. That is the most ordinary edit there is and it has to work.
+        String id = createMission(MISSION_LEAD_A, "Unchanged skills");
+        String requirementId =
+                addRequirement(id, "Engineer", EVA_SKILL_A + ":3", ROBOTICS_SKILL_A + ":2");
+
+        mockMvc.perform(asUser(json(
+                        patch("/api/missions/{id}/requirements/{req}", id, requirementId), """
+                                {"title": "Renamed only", "requiredCount": 1,
+                                 "skills": [{"skillId": "%s", "minimumProficiency": 3,
+                                             "mandatory": true},
+                                            {"skillId": "%s", "minimumProficiency": 2,
+                                             "mandatory": true}]}
+                                """.formatted(EVA_SKILL_A, ROBOTICS_SKILL_A)), MISSION_LEAD_A))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.title").value("Renamed only"))
+                .andExpect(jsonPath("$.skills.length()").value(2));
+    }
+
+    @Test
+    @DisplayName("An edit that keeps one skill, drops another and adds a third settles correctly")
+    void aPartiallyOverlappingSkillSetReconciles() throws Exception {
+        String id = createMission(MISSION_LEAD_A, "Overlapping skills");
+        String requirementId =
+                addRequirement(id, "Engineer", EVA_SKILL_A + ":3", ROBOTICS_SKILL_A + ":2");
+
+        mockMvc.perform(asUser(json(
+                        patch("/api/missions/{id}/requirements/{req}", id, requirementId), """
+                                {"title": "Engineer", "requiredCount": 1,
+                                 "skills": [{"skillId": "%s", "minimumProficiency": 4,
+                                             "mandatory": true},
+                                            {"skillId": "%s", "minimumProficiency": 1,
+                                             "mandatory": false}]}
+                                """.formatted(EVA_SKILL_A, LIFE_SUPPORT_SKILL_A)), MISSION_LEAD_A))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.skills.length()").value(2));
+
+        // Read it back rather than trusting the write response: the rows are what the next request
+        // will see, and a reconcile that went wrong can still return a plausible body.
+        mockMvc.perform(asUser(get("/api/missions/{id}", id), MISSION_LEAD_A))
+                .andExpect(jsonPath("$.requirements[0].skills.length()").value(2))
+                .andExpect(jsonPath("$.requirements[0].skills[*].skillName")
+                        .value(org.hamcrest.Matchers.containsInAnyOrder(
+                                "EVA Operations", "Life Support Systems")))
+                .andExpect(jsonPath("$.requirements[0].skills[?(@.skillName=='EVA Operations')]"
+                        + ".minimumProficiency").value(4));
+    }
+
+    @Test
+    @DisplayName("A requirement can be edited twice in a row")
+    void aRequirementCanBeEditedRepeatedly() throws Exception {
+        String id = createMission(MISSION_LEAD_A, "Edited twice");
+        String requirementId = addRequirement(id, "Engineer", EVA_SKILL_A + ":3");
+
+        for (int proficiency : new int[]{4, 5}) {
+            mockMvc.perform(asUser(json(
+                            patch("/api/missions/{id}/requirements/{req}", id, requirementId), """
+                                    {"title": "Engineer", "requiredCount": 1,
+                                     "skills": [{"skillId": "%s", "minimumProficiency": %d,
+                                                 "mandatory": true}]}
+                                    """.formatted(EVA_SKILL_A, proficiency)), MISSION_LEAD_A))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.skills[0].minimumProficiency").value(proficiency));
+        }
+    }
+
+    @Test
+    @DisplayName("Clearing every skill from a requirement leaves it with none")
+    void everySkillCanBeRemoved() throws Exception {
+        String id = createMission(MISSION_LEAD_A, "Cleared skills");
+        String requirementId = addRequirement(id, "Engineer", EVA_SKILL_A + ":3");
+
+        mockMvc.perform(asUser(json(
+                        patch("/api/missions/{id}/requirements/{req}", id, requirementId), """
+                                {"title": "Engineer", "requiredCount": 1, "skills": []}
+                                """), MISSION_LEAD_A))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.skills").isEmpty());
+
+        mockMvc.perform(asUser(get("/api/missions/{id}", id), MISSION_LEAD_A))
+                .andExpect(jsonPath("$.requirements[0].skills").isEmpty());
     }
 
     @Test

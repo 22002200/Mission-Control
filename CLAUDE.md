@@ -6,9 +6,11 @@
 - Do not expose persistence entities directly through REST APIs.
 - Use final for method parameters.
 - Use lombok for entities.
-- Use lombok for class constructors
+- Use lombok @RequiredArgsConstructor for class constructors
 (refer to backend/src/main/java/com/missioncontrol/matching/internal/CrewMatchController.java).
 - Use Slf4j for logging.
+- Place info logs in controller entry and exit points for debugging purposes
+(refer to backend/src/main/java/com/missioncontrol/matching/internal/CrewMatchController.java).
 - Use java records for DTOs.
 - Use JUnit 5 for testing.
 - Use UTC time in database.
@@ -16,8 +18,6 @@
 - Avoid introducing N+1 database queries.
 - Rebuild the image before every containerised test run to avoid stale images.
 - Treat a -Dtest= filter that prints no per-class lines as a failure rather than a pass.
-- Place info logs in controller entry and exit points for debugging purposes
-(refer to backend/src/main/java/com/missioncontrol/matching/internal/CrewMatchController.java).
 
 ### Frontend
 

@@ -1,5 +1,6 @@
 package com.missioncontrol.mission.internal;
 
+import com.missioncontrol.mission.api.MissionStatus;
 import com.missioncontrol.platform.CurrentUser;
 import java.time.Clock;
 import java.time.Instant;

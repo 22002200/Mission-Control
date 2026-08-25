@@ -1,5 +1,7 @@
 package com.missioncontrol.mission.internal;
 
+import com.missioncontrol.mission.api.MissionClosedEvent;
+import com.missioncontrol.mission.api.MissionStatus;
 import com.missioncontrol.platform.CurrentUser;
 import java.time.Clock;
 import java.time.Instant;
@@ -11,6 +13,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -52,6 +55,7 @@ class MissionService {
     private final MissionApprovals approvals;
     private final MissionDetailAssembler assembler;
     private final CurrentUser currentUser;
+    private final ApplicationEventPublisher events;
     private final Clock clock;
 
     MissionService(MissionRepository missions,
@@ -61,6 +65,7 @@ class MissionService {
                    MissionApprovals approvals,
                    MissionDetailAssembler assembler,
                    CurrentUser currentUser,
+                   ApplicationEventPublisher events,
                    Clock clock) {
         this.missions = missions;
         this.loader = loader;
@@ -69,6 +74,7 @@ class MissionService {
         this.approvals = approvals;
         this.assembler = assembler;
         this.currentUser = currentUser;
+        this.events = events;
         this.clock = clock;
     }
 
@@ -167,6 +173,14 @@ class MissionService {
         approvals.cancelOpen(mission, currentUser.userId(), request.comment(), now);
 
         mission.close(closeReasonFor(mission, request.closeReason()), request.comment(), now);
+
+        // Announced rather than acted on. Closing a mission has to withdraw its outstanding offers
+        // - feature 07's FR-8 - and that is a write into assignment, which this module must never
+        // depend on. Published inside the transaction and consumed synchronously, so the close and
+        // the withdrawals commit together or not at all. See MissionClosedEvent.
+        events.publishEvent(new MissionClosedEvent(
+                mission.getId(), mission.getOrganisationId(), now));
+
         return assembler.detail(mission);
     }
 

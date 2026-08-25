@@ -1,0 +1,70 @@
+# assignment module - seed data
+#
+# Helios Aerospace only, and that is the whole point of the file.
+#
+# Orbital Dynamics is deliberately left with no assignments at all. The worked
+# example in docs/features/06-crew-matching.md reproduces exactly against that
+# roster precisely because its experience and load terms are both zero - the
+# comment at the top of crew/002-seed-crew.yaml spells the arithmetic out and
+# says that changing it breaks the example. Seeding a single accepted assignment
+# for Ada, Bruno or Chen would do exactly that. Helios has its own crew, its own
+# skills and no worked example, so it is where a demo of offers, acceptances and
+# history belongs.
+#
+# Dates are anchored to January 2026 like the rest of the seed, never now(). A
+# seed whose meaning drifts with the wall clock cannot be asserted against
+# (feature 01, NFR-5).
+#
+# What this lays out, and why each piece is here:
+#
+#   Perihelion Watch    APPROVED   Ines Varga holds an OFFERED place, so a crew
+#   (14 Oct - 11 Nov)              member logging in has something to accept or
+#                                  decline on their first screen. Kira Almeida
+#                                  has accepted one of the two Science Officer
+#                                  seats and Nikolai Berg declined the other, so
+#                                  the line shows a filled seat, a free seat and
+#                                  a terminal row that no longer holds one.
+#
+#   Zenith Station Run  ACTIVE     Both Flight Engineer seats accepted, so an
+#   (30 Jul - 5 Dec)               ACTIVE mission genuinely reads as fully
+#                                  crewed rather than contradicting invariant
+#                                  M11. It also makes Jonas and Liam unavailable
+#                                  across most of the year, which is what gives
+#                                  the availability filter something to exclude.
+#
+#   Halcyon Trial       COMPLETED  Two accepted places on a mission that flew,
+#   (10 Feb - 1 May)               which is the definition of assignment
+#                                  history. Maya and Nikolai therefore carry
+#                                  real experience into matching, and a closed
+#                                  mission occupies nobody's calendar (A8) so
+#                                  neither is blocked by it.
+#
+# Every crew member here holds at most one non-terminal assignment per mission
+# (A5), and no two overlapping accepted missions (A3) - Kira is on Perihelion
+# and not Zenith for exactly that reason, since the two overlap.
+databaseChangeLog:
+  - changeSet:
+      id: assignment-seed-001-assignments
+      author: mission-control
+      contextFilter: seed
+      comment: >-
+        status holds the pinned codes: 1 OFFERED, 2 ACCEPTED, 3 DECLINED.
+        responded_at is null exactly for the OFFERED row, which is the check
+        constraint stated as data.
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO assignment (id, organisation_id, mission_id, crew_requirement_id, crew_member_id, status, offered_at, responded_at) VALUES
+                -- Perihelion Watch (APPROVED) - one open offer, one acceptance, one decline
+                ('b6000000-0000-0000-0000-000000000001', 'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000002', 'b5000000-0000-0000-0000-000000000002', 'b3000000-0000-0000-0000-000000000001', 1, '2026-01-06 09:00:00+00', NULL),
+                ('b6000000-0000-0000-0000-000000000002', 'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000002', 'b5000000-0000-0000-0000-000000000003', 'b3000000-0000-0000-0000-000000000003', 2, '2026-01-06 09:00:00+00', '2026-01-07 10:00:00+00'),
+                ('b6000000-0000-0000-0000-000000000003', 'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000002', 'b5000000-0000-0000-0000-000000000003', 'b3000000-0000-0000-0000-000000000006', 3, '2026-01-06 09:00:00+00', '2026-01-06 16:30:00+00'),
+                -- Zenith Station Run (ACTIVE) - both seats accepted, so it is genuinely crewed
+                ('b6000000-0000-0000-0000-000000000004', 'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000004', 'b5000000-0000-0000-0000-000000000005', 'b3000000-0000-0000-0000-000000000002', 2, '2026-01-06 09:00:00+00', '2026-01-06 12:00:00+00'),
+                ('b6000000-0000-0000-0000-000000000005', 'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000004', 'b5000000-0000-0000-0000-000000000005', 'b3000000-0000-0000-0000-000000000004', 2, '2026-01-06 09:00:00+00', '2026-01-06 13:15:00+00'),
+                -- Halcyon Trial (CLOSED as COMPLETED) - this is what assignment history is
+                ('b6000000-0000-0000-0000-000000000006', 'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000005', 'b5000000-0000-0000-0000-000000000006', 'b3000000-0000-0000-0000-000000000005', 2, '2026-01-06 09:00:00+00', '2026-01-06 11:00:00+00'),
+                ('b6000000-0000-0000-0000-000000000007', 'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000005', 'b5000000-0000-0000-0000-000000000006', 'b3000000-0000-0000-0000-000000000006', 2, '2026-01-06 09:00:00+00', '2026-01-06 11:30:00+00');
+      rollback:
+        - sql:
+            sql: DELETE FROM assignment WHERE organisation_id = 'b0000000-0000-0000-0000-000000000001';

@@ -3,9 +3,10 @@
 A web application for planning space missions and assigning crew to them, built as a
 **modular monolith**.
 
-Three domain modules are built: `identity` (logging in), `skill` (the org-scoped catalogue, reads
-only) and `mission` (planning missions, the crew they call for, and getting them approved).
-Matching, crew assignment and the dashboards are specified but not yet built — see
+Five domain modules are built: `identity` (logging in), `skill` (the org-scoped catalogue, reads
+only), `mission` (planning missions, the crew they call for, and getting them approved),
+`matching` (ranked crew suggestions) and `assignment` (offering places and answering them). The
+dashboards are specified but not yet built — see
 [`docs/features/`](docs/features/README.md) for the build order.
 
 See [`docs/architecture.md`](docs/architecture.md) for the module rules and the checklist for
@@ -77,6 +78,13 @@ exercised rather than assumed. See [`docs/features/01-seed-data.md`](docs/featur
 
 `oona.halvorsen@` exists to demonstrate that a non-`ACTIVE` account cannot log in: the password is
 correct and the request is still refused, with `403 urn:mission-control:account-disabled`.
+
+**Assignments are seeded for Helios Aerospace only.** Sign in as `ines.varga@heliosaero.example`
+to find an offer waiting to be accepted or declined. Orbital Dynamics is deliberately left with
+none: the worked example in
+[`docs/features/06-crew-matching.md`](docs/features/06-crew-matching.md) reproduces against that
+roster precisely because its experience and load terms are zero, and a single accepted assignment
+there would change every score it documents.
 
 These credentials are demo data and are deliberately weak. Seed changesets are tagged with the
 Liquibase context `seed`, which only the `local` and `docker` profiles activate — a deployment
@@ -185,9 +193,10 @@ Four things worth knowing:
   for a caller who genuinely can see the mission but may not change it.
 - **Editing an `APPROVED` or `ACTIVE` mission sends it back to `PLAN`.** The approval described a
   plan that no longer exists, so it has to be resubmitted. The UI warns before you save.
-- **`POST /start` always fails right now**, and that is correct rather than broken. Staffing counts
-  come from the assignment module, which does not exist until feature 07, so no mission reads as
-  crewed. A mission can now legitimately reach `APPROVED`, so this is the one step still missing.
+- **`POST /start` needs a full crew.** Staffing counts come from the assignment module, so a
+  mission only starts once every requirement has as many acceptances as it asked for. Until
+  feature 07 that could never happen and the call always failed; now it is a real precondition
+  rather than a missing one.
 
 ### Approval
 
@@ -229,6 +238,58 @@ fell on another page.
 
 Times are entered and displayed in your own timezone and stored as UTC. Everything goes through
 `frontend/src/lib/datetime.ts`.
+
+### Crew assignment
+
+A Mission Lead offers places on an approved mission; the crew member accepts or declines; the lead
+can withdraw somebody at any point before the mission closes. Accepting is what consumes a crew
+member's availability and builds their assignment history. See
+[`docs/features/07-crew-assignment.md`](docs/features/07-crew-assignment.md).
+
+| Method | Path | Role | Purpose |
+| --- | --- | --- | --- |
+| POST | `/api/missions/{id}/assignments` | owner | Offer a crew member a place |
+| GET | `/api/missions/{id}/assignments` | owner or DIRECTOR | The mission's crew, by requirement |
+| GET | `/api/assignments/me` | CREW_MEMBER | The caller's own assignments |
+| POST | `/api/assignments/{id}/accept` | CREW_MEMBER (self) | Take the place |
+| POST | `/api/assignments/{id}/decline` | CREW_MEMBER (self) | Turn it down |
+| POST | `/api/assignments/{id}/withdraw` | owner | Take it back |
+
+`GET /api/assignments/me` takes `status`, `timeframe` (`CURRENT`, `UPCOMING` or `PAST`), `page` and
+`size`.
+
+```bash
+curl -s -X POST "localhost:8080/api/missions/$ID/assignments" -H "Authorization: Bearer $TOKEN"   -H 'Content-Type: application/json'   -d '{"crewRequirementId":"'$REQ'","crewMemberId":"'$CREW'"}'
+```
+
+Five things worth knowing:
+
+- **An offer holds the seat, but not the person.** Two mission leads may legitimately offer the
+  same crew member overlapping dates and neither offer is refused. The clash surfaces when the
+  second one is *accepted*, as a `409 urn:mission-control:schedule-conflict` naming the mission
+  already committed to. That is a normal outcome rather than a fault, and it is the error leads
+  will meet most.
+- **Offers can only be made while a mission is `APPROVED`.** Not while it is planning, and not
+  once it is flying. A place vacated after launch is dealt with by editing the mission, which
+  sends it back to `PLAN` for re-approval.
+- **The two halves of the workflow never overlap.** Offering and withdrawing are the owning lead's;
+  accepting and declining are the crew member's. A director sees every assignment in the
+  organisation and acts on none of them — their lever on a mission they disagree with is closing
+  it. And once a crew member has accepted they are assigned: being let off is the lead's decision,
+  not theirs.
+- **Closing a mission withdraws its outstanding offers and leaves the acceptances alone.** An
+  unanswered offer to a finished mission is moot; the acceptances are the crew member's history,
+  and history is derived from exactly those rows. A closed mission also stops occupying anyone's
+  calendar, so aborting one frees its crew immediately.
+- **Two people accepting the last place produce one success and one 409.** Every staffing command
+  takes the mission's write lock first, and an acceptance takes a second lock on the crew member's
+  own open assignments — which is what catches one person accepting two clashing missions at once,
+  a race the mission lock cannot see.
+
+In the UI, offering happens on the crew matching board, where the reasoning for choosing one
+candidate over another is visible; withdrawing is on the mission page, under the requirement, where
+a director reads the same list with no buttons on it. A crew member sees **Your assignments** above
+their mission board, with pending offers pinned to the top.
 
 ### A note on styling
 
@@ -344,8 +405,11 @@ JAVA_HOME="C:/Users/61449/.jdks/temurin-21.0.12" ./mvnw verify
 ```
 
 All the integration tests share a single container and a single Spring context. Because they also
-share one database, and logout writes to the user row, each test class works with its own seeded
-accounts - see the note in `AbstractIntegrationTest`.
+share one database, each test class works with its own seeded accounts - see the note in
+`AbstractIntegrationTest`. There are now two reasons for that split rather than one: logout writes
+to the user row and would revoke a token another class is holding, and since feature 07 a crew
+member's availability is organisation-wide, so accepting a place on somebody's behalf changes what
+every other class can do with them.
 
 ## Common commands
 
@@ -378,14 +442,15 @@ These are deliberate, not oversights:
   signing out on one device signs out everywhere.
 - **No user management.** Accounts exist only because feature 01 seeds them; there is no
   registration, invite or password-reset flow.
-- **Missions can be crewed on paper but not in fact.** Feature 06 suggests crew and explains why;
-  actually offering someone a place is 07. Until then every mission reads as unstaffed and
-  `POST /start` is refused - correctly, since nobody can accept a place yet. A crew matching draft
-  is worked out fresh on each request and never saved.
-- **A Director cannot return a rejected mission to planning.** That action is owner-only; a
-  Director's route out of a rejected mission is to close it.
-- **The Assignment module is missing.** Crew and Matching now exist; assignments do not, so
-  matching's availability filter excludes nobody and its load penalty is always zero. Both are
-  correct answers rather than stubs - there are no assignments to find.
+- **A crew matching draft is never saved.** Suggestions are worked out fresh on each request, and
+  a draft is client state until the lead presses Offer. Nothing records *why* a crew member was
+  suggested either - match runs are transient, so there is no audit of a ranking.
+- **A Director cannot return a rejected mission to planning, and cannot offer or withdraw crew.**
+  All three are owner-only; a Director's route out of a mission they disagree with is to close it.
+- **A place vacated on a running mission cannot be refilled.** Offers may only be made while a
+  mission is `APPROVED`, so re-crewing an `ACTIVE` one means editing it back to `PLAN` and having
+  it approved again. That is the strict reading of invariant A1 and it is deliberate.
+- **No dashboards.** Feature 08 gives each role a landing screen; until then a crew member's
+  offers appear as a section above the mission board.
 - **Demo secrets.** `JWT_SECRET` and the database password in `.env.example` are development
   values. Nothing here is a deployment manifest.

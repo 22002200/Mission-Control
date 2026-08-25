@@ -30,8 +30,9 @@ Read [`../product.md`](../product.md), [`../architecture.md`](../architecture.md
 ```
 
 **06 before 07 is a soft ordering.** Matching reads assignment data for its load penalty and its
-"already offered" exclusion, so it is only fully correct once 07 exists. It is still useful before
-then — with no assignments, nothing is excluded and no penalty applies.
+"already offered" exclusion, so it was only fully correct once 07 arrived and implemented
+`matching.api.CrewLoadReadModel`. It was still useful before then — with no assignments, nothing
+was excluded and no penalty applied.
 
 ## Spec structure
 

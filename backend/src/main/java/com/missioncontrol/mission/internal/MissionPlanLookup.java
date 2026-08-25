@@ -20,9 +20,10 @@ import org.springframework.transaction.annotation.Transactional;
  * already - a lead reading another lead's mission got 404 while adding a requirement to it got
  * 403, which told them the mission was real.
  *
- * <p>{@code visibleDetail} rather than {@code visibleForUpdate}: this is a read, so it takes no
- * row lock. The lock exists to serialise status transitions and taking one for a suggestion would
- * make matching block every command on the mission it is matching for.
+ * <p>Two entry points that differ in exactly one thing: whether the mission row is locked.
+ * {@code forStaffing} is a read - matching a mission should never block a command on it - and
+ * {@code forStaffingUpdate} is what feature 07's offer and withdraw take, because invariant A2's
+ * cap is a count and a count read without a lock is a count two callers can both act on.
  *
  * <p>Two calls to {@code MissionStaffing} rather than one combined figure. Accepted and offered
  * mean different things - one is what M11 measures, the other is half of what A2 caps - and the
@@ -44,7 +45,33 @@ class MissionPlanLookup implements MissionPlans {
     @Override
     @Transactional(readOnly = true)
     public MissionPlan forStaffing(UUID missionId) {
-        MissionEntity mission = missions.visibleDetail(missionId);
+        return plan(missions.visibleDetail(missionId));
+    }
+
+    /**
+     * The same, having first taken the write lock on the mission row.
+     *
+     * <p>{@code visibleForUpdate} locks the bare row before the detail read attaches the
+     * requirements, which is the ordering {@code MissionRepository.lockByIdAndOrganisationId}
+     * insists on and the reason this cannot simply add a hint to the query above.
+     *
+     * <p>Not {@code readOnly}. The caller is running a command and will write in this transaction;
+     * marking the transaction read-only here would either be ignored or, worse, be honoured.
+     */
+    @Override
+    @Transactional
+    public MissionPlan forStaffingUpdate(UUID missionId) {
+        return plan(missions.visibleForUpdate(missionId));
+    }
+
+    /**
+     * Access check and assembly, shared so the locked and unlocked paths cannot answer differently.
+     *
+     * <p>{@code requireCanModify} is applied here rather than in each caller for the same reason
+     * {@code MissionAccess} exists at all: the one time two code paths held their own copy of a
+     * rule, they disagreed.
+     */
+    private MissionPlan plan(MissionEntity mission) {
         access.requireCanModify(mission);
 
         List<CrewRequirementEntity> requirements = List.copyOf(mission.getRequirements());
@@ -56,6 +83,8 @@ class MissionPlanLookup implements MissionPlans {
         return new MissionPlan(
                 mission.getId(),
                 mission.getOrganisationId(),
+                mission.getStatus(),
+                mission.getMissionLeadId(),
                 mission.getStartsAt(),
                 mission.getEndsAt(),
                 requirements.stream()

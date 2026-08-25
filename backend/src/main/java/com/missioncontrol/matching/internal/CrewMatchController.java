@@ -11,6 +11,9 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.Size;
 import java.util.Set;
 import java.util.UUID;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ProblemDetail;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -38,13 +41,13 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @Validated
-@Tag(name = "Crew matching",
-        description = "Ranked crew suggestions for a mission's requirements. Read-only.")
+@RequiredArgsConstructor
+@Tag(name = "Crew matching", description = "Ranked crew suggestions for a mission's requirements. Read-only.")
+@Slf4j
 class CrewMatchController {
 
     /**
-     * A shortlist a mission lead can actually read. Three names with a reason each is a decision;
-     * twenty is a spreadsheet.
+     * Default number of matched crew members returned.
      */
     private static final String DEFAULT_LIMIT = "3";
 
@@ -56,28 +59,26 @@ class CrewMatchController {
 
     private final CrewMatchingService matching;
 
-    CrewMatchController(CrewMatchingService matching) {
-        this.matching = matching;
-    }
-
     @GetMapping("/api/missions/{missionId}/matches")
     @Operation(
             summary = "Draft a crew for the whole mission",
             description = "Returns the highest-ranked candidates for every requirement's open "
                     + "seats. No crew member appears twice: a candidate topping two requirements "
                     + "is drafted onto the one with fewer alternatives. Nothing is offered and "
-                    + "nothing is saved.")
+                    + "nothing is saved."
+    )
     @ApiResponse(responseCode = "200", description = "A suggested crew, by requirement")
     @ApiResponse(responseCode = "401", description = "Not authenticated",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
-    @ApiResponse(responseCode = "403",
-            description = "Not the owning mission lead or a director",
+    @ApiResponse(responseCode = "403", description = "Not the owning mission lead or a director",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
-    @ApiResponse(responseCode = "404",
-            description = "No such mission in the caller's organisation",
+    @ApiResponse(responseCode = "404", description = "No such mission in the caller's organisation",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
-    MissionMatchResponse matchAll(@PathVariable UUID missionId) {
-        return matching.matchAll(missionId);
+    MissionMatchResponse matchAll(@PathVariable final UUID missionId) {
+        log.atInfo().setMessage("Request to GET all crew match; missionId={}").addArgument(missionId).log();
+        MissionMatchResponse response = matching.matchAll(missionId);
+        log.atInfo().setMessage("Request to GET all crew match completed; missionId={}").addArgument(missionId).log();
+        return response;
     }
 
     @GetMapping("/api/missions/{missionId}/requirements/{requirementId}/matches")
@@ -85,35 +86,34 @@ class CrewMatchController {
             summary = "Rank candidates for one requirement",
             description = "Candidates failing a mandatory skill, or already committed over the "
                     + "mission's dates, are absent rather than ranked last. Pass the crew members "
-                    + "already seen or drafted as exclude to get the next batch.")
+                    + "already seen or drafted as exclude to get the next batch."
+    )
     @ApiResponse(responseCode = "200", description = "Ranked candidates, best first")
     @ApiResponse(responseCode = "400", description = "A parameter is out of range",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     @ApiResponse(responseCode = "401", description = "Not authenticated",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
-    @ApiResponse(responseCode = "403",
-            description = "Not the owning mission lead or a director",
+    @ApiResponse(responseCode = "403", description = "Not the owning mission lead or a director",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
-    @ApiResponse(responseCode = "404",
-            description = "No such mission, or no such requirement on it",
+    @ApiResponse(responseCode = "404", description = "No such mission, or no such requirement on it",
             content = @Content(schema = @Schema(implementation = ProblemDetail.class)))
     RequirementMatchResponse matchRequirement(
-
-            @PathVariable UUID missionId,
-
-            @PathVariable UUID requirementId,
+            @PathVariable final UUID missionId,
+            @PathVariable final UUID requirementId,
 
             @Parameter(description = "How many candidates to return.")
-            @RequestParam(defaultValue = DEFAULT_LIMIT) @Min(1) @Max(10)
-            int limit,
+            @RequestParam(defaultValue = DEFAULT_LIMIT)
+            @Min(1) @Max(10) final int limit,
 
             @Parameter(description = "Crew members to leave out - typically everyone already "
                     + "drafted onto this mission plus everyone already shown for this "
                     + "requirement. Unknown or ineligible ids are ignored, not rejected.")
-            @RequestParam(required = false) @Size(max = MAX_EXCLUDED)
-            Set<UUID> exclude) {
-
-        return matching.matchRequirement(missionId, requirementId, limit,
-                exclude == null ? Set.of() : exclude);
+            @RequestParam(required = false)
+            @Size(max = MAX_EXCLUDED) final Set<UUID> exclude
+    ) {
+        log.atInfo().setMessage("Request to GET crew match; missionId={}, requirementId={}").addArgument(missionId).addArgument(requirementId).log();
+        RequirementMatchResponse response = matching.matchRequirement(missionId, requirementId, limit, exclude == null ? Set.of() : exclude);
+        log.atInfo().setMessage("Request to GET crew match completed; missionId={}, requirementId={}").addArgument(missionId).addArgument(requirementId).log();
+        return response;
     }
 }

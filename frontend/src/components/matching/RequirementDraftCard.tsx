@@ -7,27 +7,38 @@ import ListItem from '@mui/material/ListItem';
 import ListItemText from '@mui/material/ListItemText';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import type { CandidateResponse } from '../../api/generated/types.gen';
+import type { AssignmentResponse, CandidateResponse } from '../../api/generated/types.gen';
+import { staffingSummary } from '../../lib/assignmentLabels';
+import AssignmentStatusChip from '../assignments/AssignmentStatusChip';
 import CandidateRow from './CandidateRow';
 
 /**
- * One staffing line as a draft board: its seats, and the alternatives on offer for them.
+ * One staffing line as a draft board: who is already on it, who is drafted for it, and who else
+ * there is.
  *
  * Seats rather than a plain list because `requiredCount` is a quantity - a line needing two people
  * is two seats, and a lead filling one of them should be able to see that the other is still empty.
  *
- * Nothing here is saved. The draft is client state that feature 07 will turn into real offers; the
- * page says so once, above all of these.
+ * Three kinds of row can occupy a seat now, and the distinction is the whole point of the screen.
+ * A **committed** row is real: somebody has been offered the place, or has taken it, and undoing
+ * that is a withdrawal on the mission page. A **drafted** row is client state - a candidate the
+ * lead has pencilled in and not yet offered. An **empty** seat is neither. Feature 06 had only the
+ * middle kind, because nothing could be offered yet.
  */
 export default function RequirementDraftCard({
   requirement,
+  committed,
   drafted,
   suggestions,
   remaining,
   matching,
+  offering,
+  canOffer,
   onMatch,
   onPin,
   onRemove,
+  onOffer,
+  onOfferAll,
 }: {
   requirement: {
     requirementId: string;
@@ -37,17 +48,23 @@ export default function RequirementDraftCard({
     offeredCount: number;
     openSeats: number;
   };
+  committed: AssignmentResponse[];
   drafted: CandidateResponse[];
   suggestions: CandidateResponse[];
   remaining: number | undefined;
   matching: boolean;
+  offering: boolean;
+  canOffer: boolean;
   onMatch: () => void;
   onPin: (candidate: CandidateResponse) => void;
   onRemove: (candidate: CandidateResponse) => void;
+  onOffer: (candidate: CandidateResponse) => void;
+  onOfferAll: () => void;
 }) {
-  const seatCount = requirement.openSeats;
-  const emptySeats = Math.max(0, seatCount - drafted.length);
+  const openSeats = requirement.openSeats;
+  const emptySeats = Math.max(0, openSeats - drafted.length);
   const nothingLeft = remaining === 0 && suggestions.length === 0;
+  const totalRows = committed.length + drafted.length + emptySeats;
 
   return (
     <Card sx={{ p: 2 }}>
@@ -60,50 +77,86 @@ export default function RequirementDraftCard({
           sx={{
             whiteSpace: 'nowrap',
             fontWeight: 600,
-            color: emptySeats === 0 && seatCount > 0 ? 'success.main' : 'text.secondary',
+            color: openSeats === 0 ? 'success.main' : 'text.secondary',
           }}
         >
-          {seatCount === 0
-            ? `All ${requirement.requiredCount} filled or offered`
-            : `${drafted.length} of ${seatCount} seats drafted`}
+          {staffingSummary(
+            requirement.requiredCount,
+            requirement.acceptedCount,
+            requirement.offeredCount,
+          )}
         </Typography>
       </Stack>
 
-      {seatCount === 0 ? (
+      {totalRows === 0 ? (
         <Typography variant="body2" color="text.secondary">
-          Nothing to draft here. {requirement.acceptedCount} accepted and {requirement.offeredCount}{' '}
-          offered against {requirement.requiredCount} seats.
+          Every place on this line is taken.
         </Typography>
       ) : (
         <List dense disablePadding sx={{ border: 1, borderColor: 'divider', borderRadius: 1 }}>
+          {committed.map((assignment, index) => (
+            <ListItem key={assignment.id} divider={index < totalRows - 1}>
+              <ListItemText
+                primary={assignment.crewMember.fullName}
+                secondary="Already offered — withdraw from the mission page"
+              />
+              <AssignmentStatusChip status={assignment.status} />
+            </ListItem>
+          ))}
+
           {drafted.map((candidate, index) => (
             <ListItem
               key={candidate.crewMemberId}
-              divider={index < seatCount - 1}
+              divider={committed.length + index < totalRows - 1}
               secondaryAction={
-                <Button size="small" color="error" onClick={() => onRemove(candidate)}>
-                  Remove
-                </Button>
+                <Stack direction="row" spacing={1}>
+                  <Button size="small" color="error" onClick={() => onRemove(candidate)}>
+                    Remove
+                  </Button>
+                  {canOffer && (
+                    <Button
+                      size="small"
+                      variant="contained"
+                      disabled={offering}
+                      onClick={() => onOffer(candidate)}
+                    >
+                      Offer
+                    </Button>
+                  )}
+                </Stack>
               }
             >
               <ListItemText
-                primary={`Seat ${index + 1} — ${candidate.fullName}`}
-                secondary={`Score ${candidate.score.toFixed(3)}`}
+                primary={candidate.fullName}
+                secondary={`Drafted · score ${candidate.score.toFixed(3)}`}
               />
             </ListItem>
           ))}
 
           {Array.from({ length: emptySeats }, (_, offset) => (
-            <ListItem key={`empty-${offset}`} divider={drafted.length + offset < seatCount - 1}>
+            <ListItem
+              key={`empty-${offset}`}
+              divider={committed.length + drafted.length + offset < totalRows - 1}
+            >
               <PersonOutlinedIcon fontSize="small" sx={{ mr: 1, color: 'text.disabled' }} />
               <ListItemText
-                primary={`Seat ${drafted.length + offset + 1}`}
-                secondary="Empty"
+                primary="Empty seat"
+                secondary="Nobody drafted or offered"
                 slotProps={{ primary: { color: 'text.secondary' } }}
               />
             </ListItem>
           ))}
         </List>
+      )}
+
+      {drafted.length > 0 && canOffer && (
+        <Stack direction="row" sx={{ justifyContent: 'flex-end', mt: 1.5 }}>
+          <Button variant="contained" disabled={offering} onClick={onOfferAll}>
+            {offering
+              ? 'Offering…'
+              : `Offer ${drafted.length === 1 ? 'this place' : `all ${drafted.length}`}`}
+          </Button>
+        </Stack>
       )}
 
       <Divider sx={{ my: 2 }} />
@@ -126,9 +179,7 @@ export default function RequirementDraftCard({
 
       {suggestions.length === 0 ? (
         <Typography variant="body2" color="text.secondary">
-          {nothingLeft
-            ? 'Nobody else is eligible for this requirement.'
-            : 'No suggestions yet.'}
+          {nothingLeft ? 'Nobody else is eligible for this requirement.' : 'No suggestions yet.'}
         </Typography>
       ) : (
         <Stack spacing={1}>
@@ -138,7 +189,11 @@ export default function RequirementDraftCard({
               candidate={candidate}
               onPin={() => onPin(candidate)}
               pinDisabledReason={
-                emptySeats === 0 ? 'Every seat is drafted. Remove someone first.' : undefined
+                emptySeats === 0
+                  ? openSeats === 0
+                    ? 'Every place on this line is already offered or filled.'
+                    : 'Every open seat is drafted. Remove someone first.'
+                  : undefined
               }
             />
           ))}

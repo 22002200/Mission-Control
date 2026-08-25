@@ -1,5 +1,6 @@
 package com.missioncontrol.mission.internal;
 
+import com.missioncontrol.mission.api.MissionStatus;
 import jakarta.persistence.AttributeConverter;
 import jakarta.persistence.Converter;
 

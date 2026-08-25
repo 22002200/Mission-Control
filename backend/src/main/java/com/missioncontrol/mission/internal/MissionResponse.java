@@ -1,5 +1,6 @@
 package com.missioncontrol.mission.internal;
 
+import com.missioncontrol.mission.api.MissionStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 import java.util.List;

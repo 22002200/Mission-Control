@@ -2,9 +2,11 @@ package com.missioncontrol.crew.internal;
 
 import com.missioncontrol.crew.api.CrewDirectory;
 import com.missioncontrol.crew.api.CrewProfile;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +41,25 @@ class CrewDirectoryLookup implements CrewDirectory {
         return crewMembers.findRoster(organisationId).stream()
                 .map(CrewDirectoryLookup::toProfile)
                 .toList();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<UUID> crewMemberIdOf(UUID userId, UUID organisationId) {
+        return crewMembers.findIdByUserId(userId, organisationId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<UUID, UUID> userIdsByCrewMemberId(Collection<UUID> crewMemberIds,
+                                                 UUID organisationId) {
+        if (crewMemberIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<UUID, UUID> byCrewMemberId = new HashMap<>();
+        crewMembers.findUserIdsByIds(crewMemberIds, organisationId)
+                .forEach(row -> byCrewMemberId.put((UUID) row[0], (UUID) row[1]));
+        return Map.copyOf(byCrewMemberId);
     }
 
     private static CrewProfile toProfile(CrewMemberEntity crewMember) {

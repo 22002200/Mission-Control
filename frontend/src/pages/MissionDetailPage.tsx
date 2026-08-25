@@ -13,11 +13,13 @@ import { Link, useParams } from 'react-router';
 import {
   deleteRequirementMutation,
   getMissionOptions,
+  listMissionAssignmentsOptions,
   replanMissionMutation,
   startMissionMutation,
   submitMissionMutation,
+  withdrawAssignmentMutation,
 } from '../api/generated/@tanstack/react-query.gen';
-import type { CrewRequirementResponse } from '../api/generated/types.gen';
+import type { AssignmentResponse, CrewRequirementResponse } from '../api/generated/types.gen';
 import {
   canCloseMission,
   canDecideMission,
@@ -27,6 +29,7 @@ import {
   canReplanMission,
   canStartMission,
   canSubmitForApproval,
+  canWithdrawAssignment,
 } from '../auth/permissions';
 import { useAuth } from '../auth/useAuth';
 import ApprovalHistory from '../components/missions/ApprovalHistory';
@@ -52,6 +55,11 @@ import { messageForProblem } from '../lib/problemDetail';
  *
  * This is also where feature 05's roles divide. A lead sees Submit and Return to plan; a director
  * sees Approve and Reject. Nobody sees both, because nobody can do both.
+ *
+ * Feature 07 adds the crew under each requirement, and divides the same way: the owning lead can
+ * withdraw somebody, a director reads the same list with no buttons on it. Offering is not here -
+ * that lives on the matching board, where the reasoning for choosing one candidate over another is
+ * actually visible.
  */
 export default function MissionDetailPage() {
   const { missionId = '' } = useParams();
@@ -73,10 +81,19 @@ export default function MissionDetailPage() {
     error,
   } = useQuery(getMissionOptions({ path: { id: missionId } }));
 
+  // Staffing is a separate request, and a conditional one: the endpoint is owner-or-director, so
+  // asking for it as an assigned crew member would be a guaranteed 403 on every mission they open.
+  const mayStaff = !!mission && canMatchCrew(user, mission);
+  const { data: staffing } = useQuery({
+    ...listMissionAssignmentsOptions({ path: { missionId } }),
+    enabled: mayStaff,
+  });
+
   const start = useMutation(startMissionMutation());
   const submit = useMutation(submitMissionMutation());
   const replan = useMutation(replanMissionMutation());
   const removeRequirement = useMutation(deleteRequirementMutation());
+  const withdraw = useMutation(withdrawAssignmentMutation());
 
   if (isPending) {
     return <Typography color="text.secondary">Loading mission…</Typography>;
@@ -109,6 +126,20 @@ export default function MissionDetailPage() {
     await queryClient.invalidateQueries({ queryKey: [{ _id: 'getMission' }] });
     await queryClient.invalidateQueries({ queryKey: [{ _id: 'listMissions' }] });
     await queryClient.invalidateQueries({ queryKey: [{ _id: 'listMissionApprovals' }] });
+    // Withdrawing changes the accepted count the mission itself reports, so both have to go.
+    await queryClient.invalidateQueries({ queryKey: [{ _id: 'listMissionAssignments' }] });
+  }
+
+  async function handleWithdraw(assignment: AssignmentResponse) {
+    setActionError(null);
+    try {
+      await withdraw.mutateAsync({ path: { assignmentId: assignment.id } });
+      await refresh();
+    } catch (caught) {
+      setActionError(
+        messageForProblem(caught, `Could not withdraw ${assignment.crewMember.fullName}.`),
+      );
+    }
   }
 
   async function handleStart() {
@@ -302,9 +333,13 @@ export default function MissionDetailPage() {
             <RequirementCard
               key={requirement.id}
               requirement={requirement}
+              crew={staffing?.requirements.find((r) => r.requirementId === requirement.id)}
               editable={mayManageRequirements}
               onEdit={() => setRequirementDialog({ open: true, requirement })}
               onDelete={() => handleDeleteRequirement(requirement)}
+              canWithdraw={(assignment) => canWithdrawAssignment(user, mission, assignment)}
+              withdrawing={withdraw.isPending ? withdraw.variables?.path.assignmentId : null}
+              onWithdraw={handleWithdraw}
             />
           ))}
         </Stack>
@@ -320,11 +355,7 @@ export default function MissionDetailPage() {
         onClose={() => setApproving(false)}
       />
 
-      <RejectMissionDialog
-        open={rejecting}
-        mission={mission}
-        onClose={() => setRejecting(false)}
-      />
+      <RejectMissionDialog open={rejecting} mission={mission} onClose={() => setRejecting(false)} />
 
       <CloseMissionDialog open={closing} mission={mission} onClose={() => setClosing(false)} />
 

@@ -1,13 +1,19 @@
-package com.missioncontrol.mission.internal;
+package com.missioncontrol.mission.api;
 
 import java.util.Set;
 
 /**
  * Where a mission is in its lifecycle.
  *
- * <p>Public, unlike {@code UserStatus} in {@code identity}, because it appears in every mission
- * response and a package-private type cannot be a component of a public record. It is still an
- * {@code internal} type: no other module may name it, and {@code ModularityTests} enforces that.
+ * <p>Published, unlike {@code UserStatus} in {@code identity}, and it did not start that way. It
+ * moved out of {@code internal} for feature 07: {@code GET /api/assignments/me} renders the status
+ * of the mission each assignment is on, so {@code assignment} has to name this type. Declaring a
+ * parallel enum over there instead would put a second copy of pinned, append-only codes in the
+ * codebase, which is precisely the drift {@code docs/data-model.md} warns about.
+ *
+ * <p>{@code MissionCloseReason} deliberately did <em>not</em> come with it. No other module needs
+ * to distinguish aborted from completed by name - {@code assignment} only asks whether a mission
+ * completed, which {@link MissionWindow} answers as a boolean.
  *
  * <p>Codes are <strong>pinned and append-only</strong>, per {@code docs/data-model.md}. The integer
  * is what is stored, so renumbering a constant silently re-points existing missions at a different

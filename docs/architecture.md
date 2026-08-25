@@ -22,7 +22,7 @@ com.missioncontrol
 ├── skill                          <- Skill (read endpoints only so far)
 ├── crew                           <- CrewMember, CrewSkill (no HTTP surface yet)
 ├── mission                        <- Mission, CrewRequirement, RequiredSkill
-├── assignment                     <- planned: Assignment
+├── assignment                     <- Assignment (offers, acceptances, withdrawals)
 └── matching                       <- crew matching engine (owns no data)
 ```
 
@@ -156,7 +156,11 @@ decisions behind them and how they map onto modules.
 mission's dates and status. So `mission` must **not** depend on `assignment`. Two consequences:
 
 - "Is this requirement filled?" is a read model owned by `assignment`, not by `mission`.
-- `mission` learns about acceptances through an `AssignmentAccepted` event, not a direct call.
+- `mission` announces a closure with `MissionClosedEvent` and never learns who listened. That is
+  how closing a mission withdraws its outstanding offers without `mission` naming `assignment`.
+  The listener is a plain `@EventListener`, so it runs synchronously inside the closing
+  transaction and the two commit together — which is also why the Event Publication Registry
+  described above is still not needed.
 
 ### Published interfaces
 
@@ -170,19 +174,30 @@ place when a *second* module genuinely needs the data, not in anticipation of on
 | `crew.api.CrewDirectory` | `crew` | `crew` | Matching scores the whole roster, so it needs every profile and every rating at once |
 | `mission.api.MissionPlans` | `mission` | `mission` | Matching needs the mission window and its requirements, and the access rules that decide who may see them |
 | `mission.api.MissionTempo` | `mission` | `mission` | The load penalty scales to how long this organisation's missions actually run |
+| `mission.api.MissionWindows` | `mission` | `mission` | Assignment needs mission dates, names and seat counts, with no permission check and the row lock that serialises staffing |
+| `mission.api.MissionStatus` | `mission` | — | An enum, published because a crew member's own assignment list renders the status of each mission |
+| `mission.api.MissionClosedEvent` | `mission` | — | An announcement, not a call. Closing a mission withdraws its outstanding offers, which is a write `mission` may not perform |
 | `mission.api.StaffingReadModel` | `mission` | `assignment` | **A port.** The consumer declares it so the arrow keeps pointing `assignment → mission` |
 | `matching.api.CrewLoadReadModel` | `matching` | `assignment` | **A port**, same shape and same reason: availability and workload are assignment facts |
 
 The two ports are the interesting entries. Both are declared by the module that *needs* the data
 rather than the one that owns it, because declaring them the natural way round would create the
-cycle. Both have a no-op standing in until `assignment` exists — `UnstaffedReadModel` and
-`UnassignedCrewLoad`, resolved through an `ObjectProvider` so the application starts without them.
+cycle. `assignment` implements both, which is what makes invariant M11 satisfiable and what turns
+matching's experience and load terms from zero into real figures.
 
-The no-ops are not equivalent, and the difference is worth keeping straight. `UnstaffedReadModel`
-reporting nothing makes a mission read as un-startable, which is a deliberate refusal: there is no
-way to crew one yet. `UnassignedCrewLoad` reporting nothing is simply true — with no assignments
-there is nobody to exclude and no load to penalise, so matching's answers are correct rather than
-provisional.
+`UnstaffedReadModel` and `UnassignedCrewLoad` remain as the fallbacks, resolved through an
+`ObjectProvider` so the application still starts if `assignment` is ever removed. They are not
+dead code and they are not equivalent to each other: `UnstaffedReadModel` reporting nothing makes a
+mission read as un-startable, which is a deliberate refusal, while `UnassignedCrewLoad` reporting
+nothing is simply true.
+
+**`MissionWindows` is the entry worth explaining.** It sits beside `MissionPlans`, and the two
+differ in exactly one thing: who is asking. `MissionPlans` reads the caller from the security
+context and answers 404 or 403, which is right for a mission lead offering a place. `MissionWindows`
+takes the organisation as a parameter and refuses nobody, which is what a crew member accepting one
+needs — they fail `requireCanModify` by design, and their right to act comes from the assignment
+they hold rather than from the mission. Routing both through one interface would mean either
+refusing the crew member or teaching `mission` what an assignment is.
 
 ### Entity relationships
 

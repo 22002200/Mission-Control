@@ -1,5 +1,6 @@
 package com.missioncontrol.mission.internal;
 
+import com.missioncontrol.mission.api.MissionStatus;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 

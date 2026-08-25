@@ -10,6 +10,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import { useAuth } from '../auth/useAuth';
 import { canCreateMission } from '../auth/permissions';
+import MyAssignmentsSection from '../components/assignments/MyAssignmentsSection';
 import MissionFormDialog from '../components/missions/MissionFormDialog';
 import MissionSection from '../components/missions/MissionSection';
 import {
@@ -33,6 +34,11 @@ const ALL_STATUSES = 'ALL';
  * The filters live in the query string so a filtered view can be shared or bookmarked and survives
  * a refresh. Choosing a specific status narrows the board to the one section that status belongs
  * to, so the filter and the sections compose instead of contradicting each other.
+ *
+ * A crew member gets their own assignments above the board - feature 07. This is where they land,
+ * and an offer they cannot see is an offer they cannot answer; feature 08's dashboard will absorb
+ * it, which is why it is a section here rather than a route and a navigation item that would exist
+ * for one role in three.
  */
 export default function MissionsPage() {
   const { user } = useAuth();
@@ -116,11 +122,13 @@ export default function MissionsPage() {
         )}
       </Stack>
 
+      {user?.role === 'CREW_MEMBER' && <MyAssignmentsSection />}
+
       <Card sx={{ p: 2, mb: 4 }}>
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
           <TextField
             select
-            label="Status"
+            label="Mission status"
             value={statusParam}
             onChange={(event) => changeStatus(event.target.value)}
             sx={{ maxWidth: { sm: '14rem' } }}

@@ -139,6 +139,40 @@ export type RequiredSkillRequest = {
 };
 
 /**
+ * Offer one crew member a place against one of the mission's requirements.
+ */
+export type OfferAssignmentRequest = {
+    crewRequirementId: string;
+    crewMemberId: string;
+};
+
+/**
+ * One offer of a place on a mission.
+ */
+export type AssignmentResponse = {
+    id: string;
+    crewRequirementId: string;
+    crewMember: CrewMemberRef;
+    status: 'OFFERED' | 'ACCEPTED' | 'DECLINED' | 'WITHDRAWN';
+    offeredAt: string;
+    /**
+     * Null while the offer is still open. Set by an acceptance, a decline or a withdrawal alike.
+     */
+    respondedAt?: string;
+};
+
+/**
+ * A crew member, named.
+ */
+export type CrewMemberRef = {
+    /**
+     * The crew profile id, as used when offering a place.
+     */
+    id: string;
+    fullName: string;
+};
+
+/**
  * The reason a plan was sent back.
  */
 export type RejectMissionRequest = {
@@ -395,6 +429,26 @@ export type MissionMatchResponse = {
 };
 
 /**
+ * Every assignment on a mission, grouped by the requirement it fills.
+ */
+export type MissionAssignmentsResponse = {
+    missionId: string;
+    requirements: Array<RequirementAssignmentsResponse>;
+};
+
+/**
+ * One requirement, with the crew offered places on it.
+ */
+export type RequirementAssignmentsResponse = {
+    requirementId: string;
+    title: string;
+    requiredCount: number;
+    acceptedCount: number;
+    offeredCount: number;
+    assignments: Array<AssignmentResponse>;
+};
+
+/**
  * One submit-and-decide cycle on a mission.
  */
 export type MissionApprovalResponse = {
@@ -414,6 +468,52 @@ export type MissionApprovalResponse = {
      * Absent while the cycle is still PENDING.
      */
     decidedAt?: string;
+};
+
+/**
+ * The mission an assignment is on.
+ */
+export type MissionRef = {
+    id: string;
+    name: string;
+    status: 'PLAN' | 'PENDING_APPROVAL' | 'APPROVED' | 'REJECTED' | 'ACTIVE' | 'CLOSED';
+    startsAt: string;
+    endsAt: string;
+};
+
+/**
+ * One page of the caller's assignments.
+ */
+export type MyAssignmentPage = {
+    content: Array<MyAssignmentResponse>;
+    /**
+     * Zero-based page index.
+     */
+    page: number;
+    /**
+     * Requested page size.
+     */
+    size: number;
+    /**
+     * Total matching assignments across every page.
+     */
+    totalElements: number;
+    totalPages: number;
+};
+
+/**
+ * An assignment as the crew member holding it sees it.
+ */
+export type MyAssignmentResponse = {
+    id: string;
+    status: 'OFFERED' | 'ACCEPTED' | 'DECLINED' | 'WITHDRAWN';
+    offeredAt: string;
+    /**
+     * Null while the offer is still open.
+     */
+    respondedAt?: string;
+    mission: MissionRef;
+    requirementTitle: string;
 };
 
 export type ListMissionsData = {
@@ -537,6 +637,89 @@ export type AddRequirementResponses = {
 };
 
 export type AddRequirementResponse = AddRequirementResponses[keyof AddRequirementResponses];
+
+export type ListMissionAssignmentsData = {
+    body?: never;
+    path: {
+        missionId: string;
+    };
+    query?: {
+        /**
+         * Show only assignments in this status. Omit for all of them.
+         */
+        status?: 'OFFERED' | 'ACCEPTED' | 'DECLINED' | 'WITHDRAWN';
+    };
+    url: '/api/missions/{missionId}/assignments';
+};
+
+export type ListMissionAssignmentsErrors = {
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+    /**
+     * Not the owning mission lead or a director
+     */
+    403: ProblemDetail;
+    /**
+     * No such mission in the caller's organisation
+     */
+    404: ProblemDetail;
+};
+
+export type ListMissionAssignmentsError = ListMissionAssignmentsErrors[keyof ListMissionAssignmentsErrors];
+
+export type ListMissionAssignmentsResponses = {
+    /**
+     * The mission's crew
+     */
+    200: MissionAssignmentsResponse;
+};
+
+export type ListMissionAssignmentsResponse = ListMissionAssignmentsResponses[keyof ListMissionAssignmentsResponses];
+
+export type OfferAssignmentData = {
+    body: OfferAssignmentRequest;
+    path: {
+        missionId: string;
+    };
+    query?: never;
+    url: '/api/missions/{missionId}/assignments';
+};
+
+export type OfferAssignmentErrors = {
+    /**
+     * A required id is missing or malformed
+     */
+    400: ProblemDetail;
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+    /**
+     * Not the mission lead who owns this mission
+     */
+    403: ProblemDetail;
+    /**
+     * No such mission, requirement or crew member in the caller's organisation
+     */
+    404: ProblemDetail;
+    /**
+     * The mission is not APPROVED, the requirement is full, or this crew member already holds a place on the mission
+     */
+    409: ProblemDetail;
+};
+
+export type OfferAssignmentError = OfferAssignmentErrors[keyof OfferAssignmentErrors];
+
+export type OfferAssignmentResponses = {
+    /**
+     * The place was offered
+     */
+    201: AssignmentResponse;
+};
+
+export type OfferAssignmentResponse = OfferAssignmentResponses[keyof OfferAssignmentResponses];
 
 export type SubmitMissionData = {
     body?: never;
@@ -841,6 +1024,123 @@ export type LoginResponses = {
 };
 
 export type LoginResponse2 = LoginResponses[keyof LoginResponses];
+
+export type WithdrawAssignmentData = {
+    body?: never;
+    path: {
+        assignmentId: string;
+    };
+    query?: never;
+    url: '/api/assignments/{assignmentId}/withdraw';
+};
+
+export type WithdrawAssignmentErrors = {
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+    /**
+     * Not the mission lead who owns this mission
+     */
+    403: ProblemDetail;
+    /**
+     * No such assignment in the caller's organisation
+     */
+    404: ProblemDetail;
+    /**
+     * The assignment is already declined or withdrawn
+     */
+    409: ProblemDetail;
+};
+
+export type WithdrawAssignmentError = WithdrawAssignmentErrors[keyof WithdrawAssignmentErrors];
+
+export type WithdrawAssignmentResponses = {
+    /**
+     * Withdrawn
+     */
+    200: AssignmentResponse;
+};
+
+export type WithdrawAssignmentResponse = WithdrawAssignmentResponses[keyof WithdrawAssignmentResponses];
+
+export type DeclineAssignmentData = {
+    body?: never;
+    path: {
+        assignmentId: string;
+    };
+    query?: never;
+    url: '/api/assignments/{assignmentId}/decline';
+};
+
+export type DeclineAssignmentErrors = {
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+    /**
+     * Not the crew member offered this place
+     */
+    403: ProblemDetail;
+    /**
+     * No such assignment in the caller's organisation
+     */
+    404: ProblemDetail;
+    /**
+     * The offer is no longer open
+     */
+    409: ProblemDetail;
+};
+
+export type DeclineAssignmentError = DeclineAssignmentErrors[keyof DeclineAssignmentErrors];
+
+export type DeclineAssignmentResponses = {
+    /**
+     * Declined
+     */
+    200: AssignmentResponse;
+};
+
+export type DeclineAssignmentResponse = DeclineAssignmentResponses[keyof DeclineAssignmentResponses];
+
+export type AcceptAssignmentData = {
+    body?: never;
+    path: {
+        assignmentId: string;
+    };
+    query?: never;
+    url: '/api/assignments/{assignmentId}/accept';
+};
+
+export type AcceptAssignmentErrors = {
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+    /**
+     * Not the crew member offered this place
+     */
+    403: ProblemDetail;
+    /**
+     * No such assignment in the caller's organisation
+     */
+    404: ProblemDetail;
+    /**
+     * The offer is no longer open, the requirement filled up, or this clashes with a mission already accepted
+     */
+    409: ProblemDetail;
+};
+
+export type AcceptAssignmentError = AcceptAssignmentErrors[keyof AcceptAssignmentErrors];
+
+export type AcceptAssignmentResponses = {
+    /**
+     * Accepted
+     */
+    200: AssignmentResponse;
+};
+
+export type AcceptAssignmentResponse = AcceptAssignmentResponses[keyof AcceptAssignmentResponses];
 
 export type DeleteRequirementData = {
     body?: never;
@@ -1232,3 +1532,53 @@ export type CurrentUserResponses = {
 };
 
 export type CurrentUserResponse2 = CurrentUserResponses[keyof CurrentUserResponses];
+
+export type ListMyAssignmentsData = {
+    body?: never;
+    path?: never;
+    query?: {
+        /**
+         * Show only assignments in this status. Omit for all of them.
+         */
+        status?: 'OFFERED' | 'ACCEPTED' | 'DECLINED' | 'WITHDRAWN';
+        /**
+         * Narrow to missions running now, still to come, or over.
+         */
+        timeframe?: 'CURRENT' | 'UPCOMING' | 'PAST';
+        /**
+         * Zero-based page index.
+         */
+        page?: number;
+        /**
+         * How many to return.
+         */
+        size?: number;
+    };
+    url: '/api/assignments/me';
+};
+
+export type ListMyAssignmentsErrors = {
+    /**
+     * A parameter is out of range
+     */
+    400: ProblemDetail;
+    /**
+     * Not authenticated
+     */
+    401: ProblemDetail;
+    /**
+     * Not a crew member
+     */
+    403: ProblemDetail;
+};
+
+export type ListMyAssignmentsError = ListMyAssignmentsErrors[keyof ListMyAssignmentsErrors];
+
+export type ListMyAssignmentsResponses = {
+    /**
+     * One page of the caller's assignments
+     */
+    200: MyAssignmentPage;
+};
+
+export type ListMyAssignmentsResponse = ListMyAssignmentsResponses[keyof ListMyAssignmentsResponses];

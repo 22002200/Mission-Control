@@ -1,0 +1,39 @@
+# mission module - one more seeded crew requirement, for feature 07
+#
+# 002-seed-missions.yaml gave the two CLOSED missions no requirements, and said
+# why: a closed mission with unfilled requirements would only be confusing.
+# Feature 07 turns that reasoning around for one of them. A crew member's
+# assignment history is derived from accepted assignments on missions closed as
+# COMPLETED, and an assignment has to hang off a requirement - so with no
+# requirement on any completed mission there is no way to seed a history at all,
+# and feature 06's experience term stays zero for everyone with nothing to show
+# for it.
+#
+# So Halcyon Trial gets the one requirement it always implied, and the
+# assignment module seeds it as fully crewed and flown. It is not unfilled and
+# therefore not confusing. The aborted mission, Io Survey, still gets none:
+# nothing flew it, and inventing a crew for a mission that was stood down would
+# be a fiction the abort reason contradicts.
+#
+# A new file rather than an edit to 002. That changeset has already run in every
+# existing database, and changing it would alter its checksum and fail the next
+# startup rather than adding a row.
+databaseChangeLog:
+  - changeSet:
+      id: mission-seed-005-halcyon-requirement
+      author: mission-control
+      contextFilter: seed
+      comment: >-
+        Two seats on the completed Helios shakedown, so the assignment module
+        has something to derive a crew history from. Deliberately Helios and not
+        Orbital Dynamics - feature 06's worked example depends on the Orbital
+        Dynamics roster carrying no experience and no load, and seeding a
+        completed mission there would move both terms off zero and break it.
+      changes:
+        - sql:
+            sql: |
+              INSERT INTO crew_requirement (id, organisation_id, mission_id, title, description, required_count) VALUES
+                ('b5000000-0000-0000-0000-000000000006', 'b0000000-0000-0000-0000-000000000001', 'b4000000-0000-0000-0000-000000000005', 'Propulsion Engineer', 'Shakedown burns and telemetry review.', 2);
+      rollback:
+        - sql:
+            sql: DELETE FROM crew_requirement WHERE id = 'b5000000-0000-0000-0000-000000000006';

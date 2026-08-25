@@ -1,5 +1,7 @@
 package com.missioncontrol.mission.internal;
 
+import com.missioncontrol.mission.api.MissionStatus;
+import com.missioncontrol.mission.api.RequirementSeat;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -141,6 +143,34 @@ interface MissionRepository extends JpaRepository<MissionEntity, UUID> {
             where r.mission.id in :missionIds
             """)
     List<RequirementTotals> findRequirementTotals(@Param("missionIds") Collection<UUID> missionIds);
+
+    /**
+     * Missions by id, tenant-scoped, for the published window lookup.
+     *
+     * <p>No fetch join. {@code MissionWindow} carries no requirements, precisely so that resolving
+     * a page of a crew member's assignments cannot fan out into every staffing line of every
+     * mission they have ever been on.
+     */
+    @Query("select m from MissionEntity m where m.organisationId = :organisationId and m.id in :ids")
+    List<MissionEntity> findWindows(@Param("ids") Collection<UUID> ids,
+                                    @Param("organisationId") UUID organisationId);
+
+    /**
+     * Requirement capacity by id, tenant-scoped, as a projection.
+     *
+     * <p>A projection rather than the entities for the same reason {@link #findRequirementTotals}
+     * is one: the caller needs a title and a number, not a requirement and its skills. Scoped on
+     * the requirement's own {@code organisationId} - the column duplicated onto it for exactly
+     * this - so the query does not have to join the mission to be tenant-safe.
+     */
+    @Query("""
+            select new com.missioncontrol.mission.api.RequirementSeat(
+                r.id, r.mission.id, r.title, r.requiredCount)
+            from CrewRequirementEntity r
+            where r.organisationId = :organisationId and r.id in :ids
+            """)
+    List<RequirementSeat> findRequirementSeats(@Param("ids") Collection<UUID> ids,
+                                               @Param("organisationId") UUID organisationId);
 
     /**
      * The median length of the organisation's completed missions, in seconds.

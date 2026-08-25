@@ -1,5 +1,6 @@
 package com.missioncontrol.mission.internal;
 
+import com.missioncontrol.mission.api.MissionStatus;
 import com.missioncontrol.platform.ApiProblemException;
 import java.net.URI;
 import org.springframework.http.HttpStatus;

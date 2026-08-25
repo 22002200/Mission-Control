@@ -19,6 +19,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -43,6 +45,7 @@ import org.springframework.transaction.annotation.Transactional;
  * succeed quietly.
  */
 @Service
+@RequiredArgsConstructor
 @Slf4j
 class CrewMatchingService {
 
@@ -54,19 +57,6 @@ class CrewMatchingService {
     private final LoadWindow loadWindow;
     private final CandidateScorer scorer;
     private final Clock clock;
-
-    CrewMatchingService(MissionPlans missions, CrewDirectory crew, SkillCatalogue skills,
-                        UserDirectory users, CrewLoad crewLoad, LoadWindow loadWindow,
-                        CandidateScorer scorer, Clock clock) {
-        this.missions = missions;
-        this.crew = crew;
-        this.skills = skills;
-        this.users = users;
-        this.crewLoad = crewLoad;
-        this.loadWindow = loadWindow;
-        this.scorer = scorer;
-        this.clock = clock;
-    }
 
     /**
      * Match All - FR-9. A candidate for every open seat on the mission, nobody twice.

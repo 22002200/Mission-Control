@@ -47,14 +47,16 @@ class CrewMatchControllerApiTest {
     private static final String PROBLEM_JSON = "application/problem+json";
 
     private static final String MATCH_ALL = "/api/missions/{missionId}/matches";
-    private static final String MATCH_ONE =
-            "/api/missions/{missionId}/requirements/{requirementId}/matches";
+    private static final String MATCH_ONE = "/api/missions/{missionId}/requirements/{requirementId}/matches";
 
-    @Autowired private MockMvc mockMvc;
+    @Autowired
+    private MockMvc mockMvc;
 
-    @MockitoBean private CrewMatchingService matching;
+    @MockitoBean
+    private CrewMatchingService matching;
 
-    @Captor private ArgumentCaptor<Set<UUID>> excludeCaptor;
+    @Captor
+    private ArgumentCaptor<Set<UUID>> excludeCaptor;
 
     private static CandidateResponse candidate() {
         return new CandidateResponse(CREW, "Ada Kowalski", 1.0,

@@ -1,0 +1,153 @@
+# assignment module - schema
+#
+# One row per offer of one place on one mission to one crew member.
+#
+# There is not a single foreign key on this table, which is unusual enough to
+# say out loud. mission_id, crew_requirement_id, crew_member_id and
+# organisation_id all point at rows owned by other modules, and
+# architecture.md forbids a constraint across a module boundary. This module
+# owns no second table of its own, so unlike mission and crew_requirement there
+# is no intra-module relationship left to constrain either.
+databaseChangeLog:
+  - changeSet:
+      id: assignment-001-create-assignment
+      author: mission-control
+      comment: >-
+        status holds the pinned integer codes from docs/data-model.md:
+        1 OFFERED, 2 ACCEPTED, 3 DECLINED, 4 WITHDRAWN. There is deliberately no
+        COMPLETED - a crew member's history is derived from acceptances on
+        missions closed as COMPLETED, and a fourth terminal state here would be
+        a second place for that to be recorded and a second place for it to be
+        wrong.
+      changes:
+        - createTable:
+            tableName: assignment
+            columns:
+              - column:
+                  name: id
+                  type: UUID
+                  constraints:
+                    primaryKey: true
+                    primaryKeyName: pk_assignment
+                    nullable: false
+              - column:
+                  name: organisation_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: mission_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: crew_requirement_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: crew_member_id
+                  type: UUID
+                  constraints:
+                    nullable: false
+              - column:
+                  name: status
+                  type: SMALLINT
+                  constraints:
+                    nullable: false
+              - column:
+                  name: offered_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: false
+              - column:
+                  name: responded_at
+                  type: TIMESTAMP WITH TIME ZONE
+                  constraints:
+                    nullable: true
+
+  - changeSet:
+      id: assignment-002-assignment-checks
+      author: mission-control
+      comment: >-
+        NFR-6 - every status change records its timestamp - as an equivalence
+        rather than two one-way implications, so neither 'still offered but
+        already answered' nor 'settled with no instant' can be stored. Note this
+        is wider than the data model's original wording of 'null until accepted
+        or declined': a withdrawal is a status change too, so responded_at reads
+        as when the assignment was settled rather than when the crew member
+        replied. addCheckConstraint is a Liquibase Pro feature, so these are raw
+        SQL with explicit rollbacks, the same shape the mission_approval
+        changesets use.
+      changes:
+        - sql:
+            sql: ALTER TABLE assignment ADD CONSTRAINT ck_assignment_status CHECK (status BETWEEN 1 AND 4)
+        - sql:
+            sql: ALTER TABLE assignment ADD CONSTRAINT ck_assignment_responded CHECK ((status = 1) = (responded_at IS NULL))
+        - sql:
+            sql: ALTER TABLE assignment ADD CONSTRAINT ck_assignment_order CHECK (responded_at IS NULL OR responded_at >= offered_at)
+      rollback:
+        - sql:
+            sql: ALTER TABLE assignment DROP CONSTRAINT ck_assignment_status
+        - sql:
+            sql: ALTER TABLE assignment DROP CONSTRAINT ck_assignment_responded
+        - sql:
+            sql: ALTER TABLE assignment DROP CONSTRAINT ck_assignment_order
+
+  - changeSet:
+      id: assignment-003-assignment-open-unique
+      author: mission-control
+      comment: >-
+        Invariant A5 - at most one non-terminal assignment per crew member per
+        mission - as a partial unique index rather than a check in application
+        code, so two concurrent offers cannot both win. The service checks it as
+        well, and that is not duplication: the check is what makes the ordinary
+        case a sentence a mission lead can act on, and the index is what makes
+        the race impossible. Terminal rows are deliberately unconstrained, so
+        somebody who declined can be offered the mission again. Liquibase OSS
+        createIndex has no WHERE clause, hence raw SQL with an explicit
+        rollback.
+      changes:
+        - sql:
+            sql: CREATE UNIQUE INDEX ux_assignment_open_per_mission ON assignment (mission_id, crew_member_id) WHERE status IN (1, 2)
+      rollback:
+        - sql:
+            sql: DROP INDEX ux_assignment_open_per_mission
+
+  - changeSet:
+      id: assignment-004-assignment-indexes
+      author: mission-control
+      comment: >-
+        One index per question the module actually asks. Invariant A2 counts by
+        requirement and status; the acceptance lock and a crew member's own list
+        both lead with crew_member_id; the mission staffing view and the
+        close-withdraws-offers sweep both lead with mission_id. There is no
+        index on organisation_id alone, because no query leads with it - it is a
+        predicate every query carries rather than one any query starts from.
+        Invariant A2 gets no unique constraint: it caps a count rather than a
+        combination, and the mission row lock is what enforces it.
+      changes:
+        - createIndex:
+            tableName: assignment
+            indexName: ix_assignment_requirement_status
+            columns:
+              - column:
+                  name: crew_requirement_id
+              - column:
+                  name: status
+        - createIndex:
+            tableName: assignment
+            indexName: ix_assignment_crew_member_status
+            columns:
+              - column:
+                  name: crew_member_id
+              - column:
+                  name: status
+        - createIndex:
+            tableName: assignment
+            indexName: ix_assignment_mission_status
+            columns:
+              - column:
+                  name: mission_id
+              - column:
+                  name: status

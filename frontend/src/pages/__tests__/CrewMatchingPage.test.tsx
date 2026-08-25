@@ -3,10 +3,17 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { getMission, matchAll, matchRequirement } from '../../api/generated/sdk.gen';
+import {
+  getMission,
+  listMissionAssignments,
+  matchAll,
+  matchRequirement,
+  offerAssignment,
+} from '../../api/generated/sdk.gen';
 import type {
   CandidateResponse,
   CurrentUserResponse,
+  MissionAssignmentsResponse,
   MissionResponse,
   RequirementMatchResponse,
 } from '../../api/generated/types.gen';
@@ -18,8 +25,10 @@ import CrewMatchingPage from '../CrewMatchingPage';
 vi.mock('../../api/generated/sdk.gen', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../../api/generated/sdk.gen')>()),
   getMission: vi.fn(),
+  listMissionAssignments: vi.fn(),
   matchAll: vi.fn(),
   matchRequirement: vi.fn(),
+  offerAssignment: vi.fn(),
 }));
 
 const MISSION_ID = 'a4000000-0000-0000-0000-000000000001';
@@ -124,8 +133,37 @@ function requirementMatch(
   };
 }
 
-function renderPage(user: CurrentUserResponse, data: MissionResponse = mission()) {
+/** An APPROVED mission owned by the lead - the only state in which places can be offered. */
+function offerable(overrides: Partial<MissionResponse> = {}): MissionResponse {
+  return mission({ status: 'APPROVED', ...overrides });
+}
+
+function staffing(
+  overrides: Partial<MissionAssignmentsResponse['requirements'][number]> = {},
+): MissionAssignmentsResponse {
+  return {
+    missionId: MISSION_ID,
+    requirements: [
+      {
+        requirementId: FLIGHT_ENGINEER,
+        title: 'Flight Engineer',
+        requiredCount: 2,
+        acceptedCount: 0,
+        offeredCount: 0,
+        assignments: [],
+        ...overrides,
+      },
+    ],
+  };
+}
+
+function renderPage(
+  user: CurrentUserResponse,
+  data: MissionResponse = mission(),
+  crew: MissionAssignmentsResponse = staffing(),
+) {
   vi.mocked(getMission).mockResolvedValue({ data } as never);
+  vi.mocked(listMissionAssignments).mockResolvedValue({ data: crew } as never);
 
   const value: AuthContextValue = {
     status: 'authenticated',
@@ -164,14 +202,28 @@ describe('CrewMatchingPage', () => {
     renderPage(LEAD);
 
     expect(await screen.findByText('Flight Engineer')).toBeInTheDocument();
-    expect(screen.getByText('0 of 2 seats drafted')).toBeInTheDocument();
-    expect(screen.getAllByText('Empty')).toHaveLength(2);
+    // The heading now reports what the server knows rather than what the draft holds: a lead
+    // cares whether the line is filled, not how far through pencilling it in they are.
+    expect(screen.getByText('0 of 2 accepted')).toBeInTheDocument();
+    expect(screen.getAllByText('Empty seat')).toHaveLength(2);
   });
 
-  it('says plainly that nothing is saved and nobody is offered anything', async () => {
+  it('tells an owner on an unapproved mission that drafting is all they can do yet', async () => {
     renderPage(LEAD);
 
-    expect(await screen.findByText(/A draft is not saved/)).toBeInTheDocument();
+    // Two reasons offering can be unavailable, and only one is about the person reading it.
+    expect(
+      await screen.findByText(/Places can only be offered once the mission is approved/),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Offer' })).not.toBeInTheDocument();
+  });
+
+  it('explains to a director that offering is not theirs to do', async () => {
+    renderPage(DIRECTOR, offerable());
+
+    expect(
+      await screen.findByText(/Only the mission lead who owns this mission can offer/),
+    ).toBeInTheDocument();
   });
 
   it('fills the seats when the lead drafts a whole crew', async () => {
@@ -190,9 +242,9 @@ describe('CrewMatchingPage', () => {
     renderPage(LEAD);
     fireEvent.click(await screen.findByRole('button', { name: 'Match all' }));
 
-    expect(await screen.findByText('Seat 1 — Ada Kowalski')).toBeInTheDocument();
-    expect(screen.getByText('Seat 2 — Chen Ibarra')).toBeInTheDocument();
-    expect(screen.getByText('2 of 2 seats drafted')).toBeInTheDocument();
+    expect(await screen.findByText('Ada Kowalski')).toBeInTheDocument();
+    expect(screen.getByText('Chen Ibarra')).toBeInTheDocument();
+    expect(screen.queryByText('Empty seat')).not.toBeInTheDocument();
   });
 
   it('shows the score breakdown when a candidate is expanded', async () => {
@@ -274,7 +326,7 @@ describe('CrewMatchingPage', () => {
 
     renderPage(LEAD);
     fireEvent.click(await screen.findByRole('button', { name: 'Match all' }));
-    await screen.findByText('Seat 1 — Ada Kowalski');
+    await screen.findByText('Ada Kowalski');
 
     const flightEngineer = screen.getByText('Flight Engineer').closest('.MuiCard-root')!;
     fireEvent.click(within(flightEngineer as HTMLElement).getByRole('button', { name: 'Rematch' }));
@@ -322,9 +374,7 @@ describe('CrewMatchingPage', () => {
     renderPage(LEAD);
     fireEvent.click(await screen.findByRole('button', { name: 'Match' }));
 
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: 'Match' })).toBeDisabled(),
-    );
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Match' })).toBeDisabled());
     expect(screen.getByText('Nobody else is eligible for this requirement.')).toBeInTheDocument();
   });
 
@@ -354,14 +404,16 @@ describe('CrewMatchingPage', () => {
     fireEvent.click(await screen.findByRole('button', { name: 'Match' }));
     fireEvent.click(await screen.findByRole('button', { name: 'Draft' }));
 
-    expect(await screen.findByText('Seat 1 — Ada Kowalski')).toBeInTheDocument();
+    expect(await screen.findByText('Ada Kowalski')).toBeInTheDocument();
 
     // Removing puts them back in the suggestions rather than losing them entirely.
     fireEvent.click(screen.getByRole('button', { name: 'Remove' }));
     expect(
       await screen.findByRole('button', { name: 'Why Ada Kowalski is ranked here' }),
     ).toBeInTheDocument();
-    expect(screen.getByText('0 of 2 seats drafted')).toBeInTheDocument();
+    // Removing them empties the seat again. The heading does not move: it reports what the
+    // server knows, and nothing has been offered either way.
+    expect(screen.getAllByText('Empty seat')).toHaveLength(2);
   });
 
   it('refuses to draft anyone once every seat is taken, and says why', async () => {
@@ -381,7 +433,7 @@ describe('CrewMatchingPage', () => {
     expect(remaining[0]).toBeDisabled();
     expect(remaining[0]).toHaveAttribute(
       'title',
-      'Every seat is drafted. Remove someone first.',
+      'Every open seat is drafted. Remove someone first.',
     );
   });
 
@@ -416,7 +468,103 @@ describe('CrewMatchingPage', () => {
     renderPage(LEAD);
     fireEvent.click(await screen.findByRole('button', { name: 'Match all' }));
 
-    expect(await screen.findByText(/Only the mission lead who owns this mission can do that/))
-      .toBeInTheDocument();
+    expect(
+      await screen.findByText(/Only the mission lead who owns this mission can do that/),
+    ).toBeInTheDocument();
+  });
+
+  it('offers a drafted candidate, sending the requirement and the crew profile id', async () => {
+    vi.mocked(matchAll).mockResolvedValue({
+      data: {
+        missionId: MISSION_ID,
+        requirements: [
+          requirementMatch({ candidates: [candidate(ADA, 'Ada Kowalski', 1)], remainingCount: 0 }),
+        ],
+      },
+    } as never);
+    vi.mocked(offerAssignment).mockResolvedValue({ data: {} } as never);
+
+    renderPage(LEAD, offerable());
+    fireEvent.click(await screen.findByRole('button', { name: 'Match all' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Offer' }));
+
+    // crewMemberId, not the account id. It is the id a match suggestion already carries, which is
+    // what lets a draft become an offer without a second lookup.
+    await waitFor(() =>
+      expect(offerAssignment).toHaveBeenCalledWith(
+        expect.objectContaining({
+          path: { missionId: MISSION_ID },
+          body: { crewRequirementId: FLIGHT_ENGINEER, crewMemberId: ADA },
+        }),
+      ),
+    );
+  });
+
+  it('offers every drafted candidate one at a time rather than all at once', async () => {
+    vi.mocked(matchAll).mockResolvedValue({
+      data: {
+        missionId: MISSION_ID,
+        requirements: [
+          requirementMatch({
+            candidates: [candidate(ADA, 'Ada Kowalski', 1), candidate(CHEN, 'Chen Ibarra', 0.75)],
+          }),
+        ],
+      },
+    } as never);
+    vi.mocked(offerAssignment).mockResolvedValue({ data: {} } as never);
+
+    renderPage(LEAD, offerable());
+    fireEvent.click(await screen.findByRole('button', { name: 'Match all' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Offer all 2' }));
+
+    // Sequential on purpose: the server caps a requirement at its seat count under a row lock, so
+    // firing these together would produce arbitrary winners and an unattributable 409.
+    await waitFor(() => expect(offerAssignment).toHaveBeenCalledTimes(2));
+  });
+
+  it('reports a refused offer and leaves that candidate drafted', async () => {
+    vi.mocked(matchAll).mockResolvedValue({
+      data: {
+        missionId: MISSION_ID,
+        requirements: [requirementMatch({ candidates: [candidate(ADA, 'Ada Kowalski', 1)] })],
+      },
+    } as never);
+    vi.mocked(offerAssignment).mockRejectedValue({
+      type: 'urn:mission-control:requirement-full',
+      detail: 'All 2 places are taken, some by offers nobody has answered yet.',
+    });
+
+    renderPage(LEAD, offerable());
+    fireEvent.click(await screen.findByRole('button', { name: 'Match all' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Offer' }));
+
+    expect(await screen.findByText(/All 2 places are taken/)).toBeInTheDocument();
+    // Still on the board: a failed offer must not look like a sent one.
+    expect(screen.getByText('Ada Kowalski')).toBeInTheDocument();
+  });
+
+  it('shows who is already offered, and does not let the lead draft over them', async () => {
+    renderPage(
+      LEAD,
+      offerable(),
+      staffing({
+        offeredCount: 1,
+        assignments: [
+          {
+            id: 'b6000000-0000-0000-0000-000000000001',
+            crewRequirementId: FLIGHT_ENGINEER,
+            crewMember: { id: BRUNO, fullName: 'Bruno Sato' },
+            status: 'OFFERED',
+            offeredAt: '2026-01-06T09:00:00Z',
+          },
+        ],
+      }),
+    );
+
+    // An outstanding offer holds its seat - invariant A2 counts offered and accepted alike - so the
+    // line shows one seat gone and one left rather than two empty.
+    expect(await screen.findByText('Bruno Sato')).toBeInTheDocument();
+    expect(screen.getByText('0 of 2 accepted, 1 awaiting a reply')).toBeInTheDocument();
+    expect(screen.getAllByText('Empty seat')).toHaveLength(1);
   });
 });

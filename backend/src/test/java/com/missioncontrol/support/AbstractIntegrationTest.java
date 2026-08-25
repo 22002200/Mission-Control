@@ -48,6 +48,33 @@ public abstract class AbstractIntegrationTest {
             "a1000000-0000-0000-0000-000000000005";
     protected static final String LOG_TEST_CREW = "chen.ibarra@orbitaldynamics.example";
 
+    /**
+     * Crew reserved for feature 07's assignment tests, by the same roster-splitting rule.
+     *
+     * <p>They need more than an untouched token. Availability is a property of the whole
+     * organisation - invariant A3 says a crew member cannot hold two overlapping accepted missions
+     * - so a test that accepts a place on somebody's behalf changes what every other test can do
+     * with them. Four of them, because the interesting cases need two people offered the same
+     * place and two leads offering the same person.
+     *
+     * <p>The paired ids are crew profile ids, not account ids: that is what an offer names, and
+     * what {@code CandidateResponse.crewMemberId} returns.
+     */
+    protected static final String ASSIGNMENT_CREW_A = "dana.osei@orbitaldynamics.example";
+    protected static final String ASSIGNMENT_CREW_A_ID = "a3000000-0000-0000-0000-000000000004";
+    protected static final String ASSIGNMENT_CREW_B = "elif.novak@orbitaldynamics.example";
+    protected static final String ASSIGNMENT_CREW_B_ID = "a3000000-0000-0000-0000-000000000005";
+    protected static final String ASSIGNMENT_CREW_C = "farid.lindqvist@orbitaldynamics.example";
+    protected static final String ASSIGNMENT_CREW_C_ID = "a3000000-0000-0000-0000-000000000006";
+    protected static final String ASSIGNMENT_CREW_D = "greta.mbeki@orbitaldynamics.example";
+    protected static final String ASSIGNMENT_CREW_D_ID = "a3000000-0000-0000-0000-000000000007";
+
+    /** A crew profile in the other organisation, for the cross-tenant offer - BR-10. */
+    protected static final String OTHER_ORG_CREW_ID = "b3000000-0000-0000-0000-000000000001";
+
+    /** The second mission lead in organisation A, who owns missions this one does not. */
+    protected static final String OTHER_MISSION_LEAD_A = "priya.raman@orbitaldynamics.example";
+
     protected static final String ORG_A_ID = "a0000000-0000-0000-0000-000000000001";
     protected static final String ORG_B_ID = "b0000000-0000-0000-0000-000000000001";
     protected static final String DIRECTOR_A_ID = "a1000000-0000-0000-0000-000000000001";

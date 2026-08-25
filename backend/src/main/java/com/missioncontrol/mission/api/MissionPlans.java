@@ -34,4 +34,27 @@ public interface MissionPlans {
      *         it, which is a crew member on its own crew.
      */
     MissionPlan forStaffing(UUID missionId);
+
+    /**
+     * The same view, with a write lock held on the mission row for the rest of the transaction.
+     *
+     * <p>For a command rather than a read. Feature 07 offers and withdraws places through this, and
+     * the lock is what makes invariant A2's cap hold under load: two leads filling the last seat on
+     * a requirement serialise on the mission row, so the loser counts what the winner committed
+     * instead of counting alongside it.
+     *
+     * <p>Identical access rules to {@link #forStaffing} - deliberately, and reusing the same beans
+     * rather than restating them. The finer split feature 07 needs on top, that offering is the
+     * owning lead's alone while a director may only read, is BR-9 and belongs to the caller: this
+     * module's rule is owner-or-director and it has no opinion about which staffing verb is being
+     * attempted. {@link MissionPlan#isOwnedBy} is there for exactly that check.
+     *
+     * <p>Takes the lock before it reads the detail, which is the order
+     * {@code MissionRepository.lockByIdAndOrganisationId} explains at length. A caller must
+     * therefore reach this before touching the same mission any other way in the transaction.
+     *
+     * @throws RuntimeException the same 404 and 403 {@link #forStaffing} raises, for the same
+     *         reasons and in the same cases.
+     */
+    MissionPlan forStaffingUpdate(UUID missionId);
 }

@@ -3,8 +3,8 @@
 import { type DefaultError, type InfiniteData, infiniteQueryOptions, queryOptions, type UseMutationOptions } from '@tanstack/react-query';
 
 import { client } from '../client.gen';
-import { addRequirement, approveMission, closeMission, createMission, currentUser, deleteRequirement, getMission, getSkill, getSystemInfo, listMissionApprovals, listMissions, listSkills, login, logout, matchAll, matchRequirement, type Options, rejectMission, replanMission, startMission, submitMission, updateMission, updateRequirement } from '../sdk.gen';
-import type { AddRequirementData, AddRequirementError, AddRequirementResponse, ApproveMissionData, ApproveMissionError, ApproveMissionResponse, CloseMissionData, CloseMissionError, CloseMissionResponse, CreateMissionData, CreateMissionError, CreateMissionResponse, CurrentUserData, CurrentUserError, CurrentUserResponse2, DeleteRequirementData, DeleteRequirementError, DeleteRequirementResponse, GetMissionData, GetMissionError, GetMissionResponse, GetSkillData, GetSkillError, GetSkillResponse, GetSystemInfoData, GetSystemInfoResponse, ListMissionApprovalsData, ListMissionApprovalsError, ListMissionApprovalsResponse, ListMissionsData, ListMissionsError, ListMissionsResponse, ListSkillsData, ListSkillsError, ListSkillsResponse, LoginData, LoginError, LoginResponse2, LogoutData, LogoutError, LogoutResponse, MatchAllData, MatchAllError, MatchAllResponse, MatchRequirementData, MatchRequirementError, MatchRequirementResponse, RejectMissionData, RejectMissionError, RejectMissionResponse, ReplanMissionData, ReplanMissionError, ReplanMissionResponse, StartMissionData, StartMissionError, StartMissionResponse, SubmitMissionData, SubmitMissionError, SubmitMissionResponse, UpdateMissionData, UpdateMissionError, UpdateMissionResponse, UpdateRequirementData, UpdateRequirementError, UpdateRequirementResponse } from '../types.gen';
+import { acceptAssignment, addRequirement, approveMission, closeMission, createMission, currentUser, declineAssignment, deleteRequirement, getMission, getSkill, getSystemInfo, listMissionApprovals, listMissionAssignments, listMissions, listMyAssignments, listSkills, login, logout, matchAll, matchRequirement, offerAssignment, type Options, rejectMission, replanMission, startMission, submitMission, updateMission, updateRequirement, withdrawAssignment } from '../sdk.gen';
+import type { AcceptAssignmentData, AcceptAssignmentError, AcceptAssignmentResponse, AddRequirementData, AddRequirementError, AddRequirementResponse, ApproveMissionData, ApproveMissionError, ApproveMissionResponse, CloseMissionData, CloseMissionError, CloseMissionResponse, CreateMissionData, CreateMissionError, CreateMissionResponse, CurrentUserData, CurrentUserError, CurrentUserResponse2, DeclineAssignmentData, DeclineAssignmentError, DeclineAssignmentResponse, DeleteRequirementData, DeleteRequirementError, DeleteRequirementResponse, GetMissionData, GetMissionError, GetMissionResponse, GetSkillData, GetSkillError, GetSkillResponse, GetSystemInfoData, GetSystemInfoResponse, ListMissionApprovalsData, ListMissionApprovalsError, ListMissionApprovalsResponse, ListMissionAssignmentsData, ListMissionAssignmentsError, ListMissionAssignmentsResponse, ListMissionsData, ListMissionsError, ListMissionsResponse, ListMyAssignmentsData, ListMyAssignmentsError, ListMyAssignmentsResponse, ListSkillsData, ListSkillsError, ListSkillsResponse, LoginData, LoginError, LoginResponse2, LogoutData, LogoutError, LogoutResponse, MatchAllData, MatchAllError, MatchAllResponse, MatchRequirementData, MatchRequirementError, MatchRequirementResponse, OfferAssignmentData, OfferAssignmentError, OfferAssignmentResponse, RejectMissionData, RejectMissionError, RejectMissionResponse, ReplanMissionData, ReplanMissionError, ReplanMissionResponse, StartMissionData, StartMissionError, StartMissionResponse, SubmitMissionData, SubmitMissionError, SubmitMissionResponse, UpdateMissionData, UpdateMissionError, UpdateMissionResponse, UpdateRequirementData, UpdateRequirementError, UpdateRequirementResponse, WithdrawAssignmentData, WithdrawAssignmentError, WithdrawAssignmentResponse } from '../types.gen';
 
 export type QueryKey<TOptions extends Options> = [
     Pick<TOptions, 'baseUrl' | 'body' | 'headers' | 'path' | 'query'> & {
@@ -158,6 +158,45 @@ export const addRequirementMutation = (options?: Partial<Options<AddRequirementD
     return mutationOptions;
 };
 
+export const listMissionAssignmentsQueryKey = (options: Options<ListMissionAssignmentsData>) => createQueryKey('listMissionAssignments', options);
+
+/**
+ * The mission's crew, by requirement
+ *
+ * Every requirement on the mission, each with the crew offered places on it. Requirements nobody has been offered are included with an empty list - an unstaffed line is the one most worth seeing.
+ */
+export const listMissionAssignmentsOptions = (options: Options<ListMissionAssignmentsData>) => queryOptions<ListMissionAssignmentsResponse, ListMissionAssignmentsError, ListMissionAssignmentsResponse, ReturnType<typeof listMissionAssignmentsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await listMissionAssignments({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: listMissionAssignmentsQueryKey(options)
+});
+
+/**
+ * Offer a crew member a place
+ *
+ * Creates an OFFERED assignment against one of the mission's requirements. Only the mission lead who owns the mission may offer, and only while it is APPROVED. An offer reserves the seat but not the crew member: two leads may offer the same person clashing dates, and the clash is settled when one of them is accepted.
+ */
+export const offerAssignmentMutation = (options?: Partial<Options<OfferAssignmentData>>): UseMutationOptions<OfferAssignmentResponse, OfferAssignmentError, Options<OfferAssignmentData>> => {
+    const mutationOptions: UseMutationOptions<OfferAssignmentResponse, OfferAssignmentError, Options<OfferAssignmentData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await offerAssignment({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
 /**
  * Submit a mission for approval
  *
@@ -300,6 +339,63 @@ export const loginMutation = (options?: Partial<Options<LoginData>>): UseMutatio
     const mutationOptions: UseMutationOptions<LoginResponse2, LoginError, Options<LoginData>> = {
         mutationFn: async (fnOptions) => {
             const { data } = await login({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Withdraw a place
+ *
+ * The owning mission lead's alone, and the only way an acceptance is undone. Withdrawing crew from a running mission does not send it back to APPROVED: full staffing is a precondition of starting, not a standing rule.
+ */
+export const withdrawAssignmentMutation = (options?: Partial<Options<WithdrawAssignmentData>>): UseMutationOptions<WithdrawAssignmentResponse, WithdrawAssignmentError, Options<WithdrawAssignmentData>> => {
+    const mutationOptions: UseMutationOptions<WithdrawAssignmentResponse, WithdrawAssignmentError, Options<WithdrawAssignmentData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await withdrawAssignment({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Decline a place
+ *
+ * Frees the place immediately, so the mission lead can offer it to somebody else. Terminal: a declined offer cannot be accepted later, though the same crew member may be offered the mission again.
+ */
+export const declineAssignmentMutation = (options?: Partial<Options<DeclineAssignmentData>>): UseMutationOptions<DeclineAssignmentResponse, DeclineAssignmentError, Options<DeclineAssignmentData>> => {
+    const mutationOptions: UseMutationOptions<DeclineAssignmentResponse, DeclineAssignmentError, Options<DeclineAssignmentData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await declineAssignment({
+                ...options,
+                ...fnOptions,
+                throwOnError: true
+            });
+            return data;
+        }
+    };
+    return mutationOptions;
+};
+
+/**
+ * Accept a place
+ *
+ * Refused if the crew member has already accepted an overlapping mission that is not closed. That check runs here and not when the offer was made, so two leads may both offer the same person the same dates and only the first acceptance succeeds.
+ */
+export const acceptAssignmentMutation = (options?: Partial<Options<AcceptAssignmentData>>): UseMutationOptions<AcceptAssignmentResponse, AcceptAssignmentError, Options<AcceptAssignmentData>> => {
+    const mutationOptions: UseMutationOptions<AcceptAssignmentResponse, AcceptAssignmentError, Options<AcceptAssignmentData>> = {
+        mutationFn: async (fnOptions) => {
+            const { data } = await acceptAssignment({
                 ...options,
                 ...fnOptions,
                 throwOnError: true
@@ -558,3 +654,55 @@ export const currentUserOptions = (options?: Options<CurrentUserData>) => queryO
     },
     queryKey: currentUserQueryKey(options)
 });
+
+export const listMyAssignmentsQueryKey = (options?: Options<ListMyAssignmentsData>) => createQueryKey('listMyAssignments', options);
+
+/**
+ * The caller's own assignments
+ *
+ * Newest offer first. Filter by status, and by whether the mission is running now, still to come, or over - which is measured against the mission's dates rather than its status.
+ */
+export const listMyAssignmentsOptions = (options?: Options<ListMyAssignmentsData>) => queryOptions<ListMyAssignmentsResponse, ListMyAssignmentsError, ListMyAssignmentsResponse, ReturnType<typeof listMyAssignmentsQueryKey>>({
+    queryFn: async ({ queryKey, signal }) => {
+        const { data } = await listMyAssignments({
+            ...options,
+            ...queryKey[0],
+            signal,
+            throwOnError: true
+        });
+        return data;
+    },
+    queryKey: listMyAssignmentsQueryKey(options)
+});
+
+export const listMyAssignmentsInfiniteQueryKey = (options?: Options<ListMyAssignmentsData>): QueryKey<Options<ListMyAssignmentsData>> => createQueryKey('listMyAssignments', options, true);
+
+/**
+ * The caller's own assignments
+ *
+ * Newest offer first. Filter by status, and by whether the mission is running now, still to come, or over - which is measured against the mission's dates rather than its status.
+ */
+export const listMyAssignmentsInfiniteOptions = (options?: Options<ListMyAssignmentsData>) => {
+    const opts = infiniteQueryOptions<ListMyAssignmentsResponse, ListMyAssignmentsError, InfiniteData<ListMyAssignmentsResponse>, QueryKey<Options<ListMyAssignmentsData>>, number | Pick<QueryKey<Options<ListMyAssignmentsData>>[0], 'body' | 'headers' | 'path' | 'query'>>(
+    // @ts-ignore
+    {
+        queryFn: async ({ pageParam, queryKey, signal }) => {
+            // @ts-ignore
+            const page: Pick<QueryKey<Options<ListMyAssignmentsData>>[0], 'body' | 'headers' | 'path' | 'query'> = typeof pageParam === 'object' ? pageParam : {
+                query: {
+                    page: pageParam
+                }
+            };
+            const params = createInfiniteParams(queryKey, page);
+            const { data } = await listMyAssignments({
+                ...options,
+                ...params,
+                signal,
+                throwOnError: true
+            });
+            return data;
+        },
+        queryKey: listMyAssignmentsInfiniteQueryKey(options)
+    });
+    return opts as Omit<typeof opts, 'initialData'>;
+};

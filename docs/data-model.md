@@ -129,7 +129,7 @@ loop keeps its full history rather than overwriting a single rejection reason.
 | `crewMemberId` | |
 | `status` | `AssignmentStatus` |
 | `offeredAt` | |
-| `respondedAt` | null until accepted or declined |
+| `respondedAt` | null while `OFFERED`; set when the assignment is settled, withdrawal included |
 
 There is no `COMPLETED` status — completion derives from the mission closing as `COMPLETED`.
 
@@ -215,7 +215,7 @@ Numbered so code and tests can cite them.
 
 ### Assignment
 
-- **A1** Assignments may be created only while the mission is `APPROVED` or `ACTIVE`.
+- **A1** Assignments may be created only while the mission is `APPROVED`.
 - **A2** For each requirement, the number of `OFFERED` plus `ACCEPTED` assignments never exceeds
   `requiredCount`.
 - **A3** A crew member has no two `ACCEPTED` assignments, on missions that are not `CLOSED`,
@@ -226,9 +226,12 @@ Numbered so code and tests can cite them.
   check inside the accepting transaction.
 - **A5** A crew member has at most one non-terminal (`OFFERED` or `ACCEPTED`) assignment per
   mission.
-- **A6** Only the crew member themself may accept or decline their assignment.
+- **A6** Only the crew member themself may accept or decline their assignment, and only while it
+  is `OFFERED`. Once accepted they are assigned; releasing them is the owning mission lead's
+  decision, not theirs.
 - **A7** Status transitions: `OFFERED` to `ACCEPTED`, `DECLINED` or `WITHDRAWN`; `ACCEPTED` to
-  `WITHDRAWN`. `DECLINED` and `WITHDRAWN` are terminal.
+  `WITHDRAWN`. `DECLINED` and `WITHDRAWN` are terminal. Withdrawal is the owning mission lead's
+  alone - not a director's, and not the crew member's.
 - **A8** Closing a mission withdraws its `OFFERED` assignments — an un-answered offer to a
   finished mission is moot. `ACCEPTED` assignments are left untouched: they are the crew
   member's history, and withdrawing them would erase it. A closed mission no longer occupies
@@ -261,15 +264,13 @@ Computed on read. Storing them would create a second source of truth that drifts
   `ACTIVE` to `PLAN` are legal transitions *because of M5*, so an endpoint that only asks M3
   whether `PLAN` is reachable is not asking the right question. `POST /replan` names `REJECTED`
   explicitly.
-- **M11 cannot be satisfied until [07](features/07-crew-assignment.md).** Staffing counts reach
-  `mission` through a port it declares itself, `mission.api.StaffingReadModel`, and the only
-  implementation until then reports nothing as staffed. So `APPROVED` to `ACTIVE` is always
-  refused in a running application. A mission *can* now reach `APPROVED` — that arrived with
-  [05](features/05-mission-approval.md) — so this is no longer moot, merely unreachable one step
-  later. One wrinkle worth recording: M11 read literally is vacuously true for a mission with no
-  requirements, so 04 refuses that case explicitly rather than letting an empty mission launch.
-  M12 is the real fix and it arrived with 05, at submission time; both refusals stay, catching the
-  same hole at different depths.
+- **M11 is satisfiable as of [07](features/07-crew-assignment.md).** Staffing counts reach
+  `mission` through a port it declares itself, `mission.api.StaffingReadModel`, which the
+  `assignment` module now implements; until it existed the only implementation reported nothing as
+  staffed and `APPROVED` to `ACTIVE` was always refused. One wrinkle worth recording: M11 read
+  literally is vacuously true for a mission with no requirements, so 04 refuses that case
+  explicitly rather than letting an empty mission launch. M12 is the real fix and it arrived with
+  05, at submission time; both refusals stay, catching the same hole at different depths.
 
 - **A director cannot unstick a rejected mission.** `POST /replan` is owner-only, which is narrower
   than M6 allows, because 05's API table says so and having another go at a plan is planning work.

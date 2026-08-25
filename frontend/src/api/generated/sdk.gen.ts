@@ -2,7 +2,7 @@
 
 import type { Client, ClientMeta, Options as Options2, RequestResult, TDataShape } from './client';
 import { client } from './client.gen';
-import type { AddRequirementData, AddRequirementErrors, AddRequirementResponses, ApproveMissionData, ApproveMissionErrors, ApproveMissionResponses, CloseMissionData, CloseMissionErrors, CloseMissionResponses, CreateMissionData, CreateMissionErrors, CreateMissionResponses, CurrentUserData, CurrentUserErrors, CurrentUserResponses, DeleteRequirementData, DeleteRequirementErrors, DeleteRequirementResponses, GetMissionData, GetMissionErrors, GetMissionResponses, GetSkillData, GetSkillErrors, GetSkillResponses, GetSystemInfoData, GetSystemInfoResponses, ListMissionApprovalsData, ListMissionApprovalsErrors, ListMissionApprovalsResponses, ListMissionsData, ListMissionsErrors, ListMissionsResponses, ListSkillsData, ListSkillsErrors, ListSkillsResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, MatchAllData, MatchAllErrors, MatchAllResponses, MatchRequirementData, MatchRequirementErrors, MatchRequirementResponses, RejectMissionData, RejectMissionErrors, RejectMissionResponses, ReplanMissionData, ReplanMissionErrors, ReplanMissionResponses, StartMissionData, StartMissionErrors, StartMissionResponses, SubmitMissionData, SubmitMissionErrors, SubmitMissionResponses, UpdateMissionData, UpdateMissionErrors, UpdateMissionResponses, UpdateRequirementData, UpdateRequirementErrors, UpdateRequirementResponses } from './types.gen';
+import type { AcceptAssignmentData, AcceptAssignmentErrors, AcceptAssignmentResponses, AddRequirementData, AddRequirementErrors, AddRequirementResponses, ApproveMissionData, ApproveMissionErrors, ApproveMissionResponses, CloseMissionData, CloseMissionErrors, CloseMissionResponses, CreateMissionData, CreateMissionErrors, CreateMissionResponses, CurrentUserData, CurrentUserErrors, CurrentUserResponses, DeclineAssignmentData, DeclineAssignmentErrors, DeclineAssignmentResponses, DeleteRequirementData, DeleteRequirementErrors, DeleteRequirementResponses, GetMissionData, GetMissionErrors, GetMissionResponses, GetSkillData, GetSkillErrors, GetSkillResponses, GetSystemInfoData, GetSystemInfoResponses, ListMissionApprovalsData, ListMissionApprovalsErrors, ListMissionApprovalsResponses, ListMissionAssignmentsData, ListMissionAssignmentsErrors, ListMissionAssignmentsResponses, ListMissionsData, ListMissionsErrors, ListMissionsResponses, ListMyAssignmentsData, ListMyAssignmentsErrors, ListMyAssignmentsResponses, ListSkillsData, ListSkillsErrors, ListSkillsResponses, LoginData, LoginErrors, LoginResponses, LogoutData, LogoutErrors, LogoutResponses, MatchAllData, MatchAllErrors, MatchAllResponses, MatchRequirementData, MatchRequirementErrors, MatchRequirementResponses, OfferAssignmentData, OfferAssignmentErrors, OfferAssignmentResponses, RejectMissionData, RejectMissionErrors, RejectMissionResponses, ReplanMissionData, ReplanMissionErrors, ReplanMissionResponses, StartMissionData, StartMissionErrors, StartMissionResponses, SubmitMissionData, SubmitMissionErrors, SubmitMissionResponses, UpdateMissionData, UpdateMissionErrors, UpdateMissionResponses, UpdateRequirementData, UpdateRequirementErrors, UpdateRequirementResponses, WithdrawAssignmentData, WithdrawAssignmentErrors, WithdrawAssignmentResponses } from './types.gen';
 
 export type Options<TData extends TDataShape = TDataShape, ThrowOnError extends boolean = boolean, TResponse = unknown> = Options2<TData, ThrowOnError, TResponse> & {
     /**
@@ -52,6 +52,32 @@ export const createMission = <ThrowOnError extends boolean = false>(options: Opt
 export const addRequirement = <ThrowOnError extends boolean = false>(options: Options<AddRequirementData, ThrowOnError>): RequestResult<AddRequirementResponses, AddRequirementErrors, ThrowOnError> => (options.client ?? client).post<AddRequirementResponses, AddRequirementErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/missions/{missionId}/requirements',
+    ...options,
+    headers: {
+        'Content-Type': 'application/json',
+        ...options.headers
+    }
+});
+
+/**
+ * The mission's crew, by requirement
+ *
+ * Every requirement on the mission, each with the crew offered places on it. Requirements nobody has been offered are included with an empty list - an unstaffed line is the one most worth seeing.
+ */
+export const listMissionAssignments = <ThrowOnError extends boolean = false>(options: Options<ListMissionAssignmentsData, ThrowOnError>): RequestResult<ListMissionAssignmentsResponses, ListMissionAssignmentsErrors, ThrowOnError> => (options.client ?? client).get<ListMissionAssignmentsResponses, ListMissionAssignmentsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/missions/{missionId}/assignments',
+    ...options
+});
+
+/**
+ * Offer a crew member a place
+ *
+ * Creates an OFFERED assignment against one of the mission's requirements. Only the mission lead who owns the mission may offer, and only while it is APPROVED. An offer reserves the seat but not the crew member: two leads may offer the same person clashing dates, and the clash is settled when one of them is accepted.
+ */
+export const offerAssignment = <ThrowOnError extends boolean = false>(options: Options<OfferAssignmentData, ThrowOnError>): RequestResult<OfferAssignmentResponses, OfferAssignmentErrors, ThrowOnError> => (options.client ?? client).post<OfferAssignmentResponses, OfferAssignmentErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/missions/{missionId}/assignments',
     ...options,
     headers: {
         'Content-Type': 'application/json',
@@ -160,6 +186,39 @@ export const login = <ThrowOnError extends boolean = false>(options: Options<Log
         'Content-Type': 'application/json',
         ...options.headers
     }
+});
+
+/**
+ * Withdraw a place
+ *
+ * The owning mission lead's alone, and the only way an acceptance is undone. Withdrawing crew from a running mission does not send it back to APPROVED: full staffing is a precondition of starting, not a standing rule.
+ */
+export const withdrawAssignment = <ThrowOnError extends boolean = false>(options: Options<WithdrawAssignmentData, ThrowOnError>): RequestResult<WithdrawAssignmentResponses, WithdrawAssignmentErrors, ThrowOnError> => (options.client ?? client).post<WithdrawAssignmentResponses, WithdrawAssignmentErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/assignments/{assignmentId}/withdraw',
+    ...options
+});
+
+/**
+ * Decline a place
+ *
+ * Frees the place immediately, so the mission lead can offer it to somebody else. Terminal: a declined offer cannot be accepted later, though the same crew member may be offered the mission again.
+ */
+export const declineAssignment = <ThrowOnError extends boolean = false>(options: Options<DeclineAssignmentData, ThrowOnError>): RequestResult<DeclineAssignmentResponses, DeclineAssignmentErrors, ThrowOnError> => (options.client ?? client).post<DeclineAssignmentResponses, DeclineAssignmentErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/assignments/{assignmentId}/decline',
+    ...options
+});
+
+/**
+ * Accept a place
+ *
+ * Refused if the crew member has already accepted an overlapping mission that is not closed. That check runs here and not when the offer was made, so two leads may both offer the same person the same dates and only the first acceptance succeeds.
+ */
+export const acceptAssignment = <ThrowOnError extends boolean = false>(options: Options<AcceptAssignmentData, ThrowOnError>): RequestResult<AcceptAssignmentResponses, AcceptAssignmentErrors, ThrowOnError> => (options.client ?? client).post<AcceptAssignmentResponses, AcceptAssignmentErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/assignments/{assignmentId}/accept',
+    ...options
 });
 
 /**
@@ -288,5 +347,16 @@ export const listMissionApprovals = <ThrowOnError extends boolean = false>(optio
 export const currentUser = <ThrowOnError extends boolean = false>(options?: Options<CurrentUserData, ThrowOnError>): RequestResult<CurrentUserResponses, CurrentUserErrors, ThrowOnError> => (options?.client ?? client).get<CurrentUserResponses, CurrentUserErrors, ThrowOnError>({
     security: [{ scheme: 'bearer', type: 'http' }],
     url: '/api/auth/me',
+    ...options
+});
+
+/**
+ * The caller's own assignments
+ *
+ * Newest offer first. Filter by status, and by whether the mission is running now, still to come, or over - which is measured against the mission's dates rather than its status.
+ */
+export const listMyAssignments = <ThrowOnError extends boolean = false>(options?: Options<ListMyAssignmentsData, ThrowOnError>): RequestResult<ListMyAssignmentsResponses, ListMyAssignmentsErrors, ThrowOnError> => (options?.client ?? client).get<ListMyAssignmentsResponses, ListMyAssignmentsErrors, ThrowOnError>({
+    security: [{ scheme: 'bearer', type: 'http' }],
+    url: '/api/assignments/me',
     ...options
 });

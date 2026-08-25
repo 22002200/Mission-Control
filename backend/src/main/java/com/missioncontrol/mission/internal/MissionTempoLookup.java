@@ -1,5 +1,6 @@
 package com.missioncontrol.mission.internal;
 
+import com.missioncontrol.mission.api.MissionStatus;
 import com.missioncontrol.mission.api.MissionTempo;
 import java.time.Duration;
 import java.util.Optional;

@@ -1,4 +1,9 @@
-import type { CurrentUserResponse, MissionResponse } from '../api/generated/types.gen';
+import type {
+  AssignmentResponse,
+  CurrentUserResponse,
+  MissionResponse,
+  MyAssignmentResponse,
+} from '../api/generated/types.gen';
 
 /**
  * What the signed-in user may do, as the UI understands it.
@@ -8,8 +13,8 @@ import type { CurrentUserResponse, MissionResponse } from '../api/generated/type
  * module rather than inline in each screen means the mission page and the requirement cards cannot
  * disagree about who owns what.
  *
- * The rules mirror invariants M2, M6 and BR-10 in `docs/data-model.md`, and feature 05's
- * BR-2, BR-3 and BR-7.
+ * The rules mirror invariants M2, M6 and BR-10 in `docs/data-model.md`, feature 05's BR-2, BR-3
+ * and BR-7, and feature 07's BR-6 and BR-9.
  */
 
 /** M2: directors do not own missions, so only a lead can start one. */
@@ -104,6 +109,56 @@ export function canDecideMission(
   mission: Pick<MissionResponse, 'status'>,
 ): boolean {
   return user?.role === 'DIRECTOR' && mission.status === 'PENDING_APPROVAL';
+}
+
+/**
+ * Feature 07 BR-1 and BR-9: the owning lead, and only while the mission is APPROVED.
+ *
+ * Narrower than `canMatchCrew` in both directions that matter. A director may run a match and read
+ * the crew but may never offer anybody a place - their lever on a mission they disagree with is
+ * closing it. And matching works in every status, while offering works in exactly one: a mission
+ * already flying is not taking on crew, and a seat vacated after launch is dealt with by editing
+ * the plan, which sends it back to PLAN under M5.
+ */
+export function canOfferCrew(
+  user: CurrentUserResponse | null,
+  mission: Pick<MissionResponse, 'missionLead' | 'status'>,
+): boolean {
+  return !!user && mission.status === 'APPROVED' && mission.missionLead.id === user.id;
+}
+
+/**
+ * Feature 07 BR-9: withdrawing a place is the owning lead's alone.
+ *
+ * Not a director's, which is narrower than invariant M6 allows and matches `canReplanMission`
+ * rather than `canModifyMission`. Unlike offering, this is not restricted by mission status: crew
+ * can be released from a mission that is already running, and BR-11 says doing so does not send it
+ * backwards.
+ *
+ * A terminal assignment has nothing left to withdraw, so the button goes rather than failing.
+ */
+export function canWithdrawAssignment(
+  user: CurrentUserResponse | null,
+  mission: Pick<MissionResponse, 'missionLead'>,
+  assignment: Pick<AssignmentResponse, 'status'>,
+): boolean {
+  if (!user || mission.missionLead.id !== user.id) return false;
+  return assignment.status === 'OFFERED' || assignment.status === 'ACCEPTED';
+}
+
+/**
+ * Feature 07 BR-6: only the crew member named on an offer may answer it, and only while it is open.
+ *
+ * The caller is always the named crew member here - `GET /api/assignments/me` returns nothing else
+ * - so the only real question is whether the offer is still open. Once accepted they are assigned:
+ * releasing them is the lead's decision, not theirs, which is why this covers decline as well as
+ * accept.
+ */
+export function canRespondToOffer(
+  user: CurrentUserResponse | null,
+  assignment: Pick<MyAssignmentResponse, 'status'>,
+): boolean {
+  return user?.role === 'CREW_MEMBER' && assignment.status === 'OFFERED';
 }
 
 /**

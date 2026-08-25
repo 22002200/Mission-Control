@@ -13,7 +13,13 @@ import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
 import Typography from '@mui/material/Typography';
 import { useState } from 'react';
-import type { CrewRequirementResponse } from '../../api/generated/types.gen';
+import type {
+  AssignmentResponse,
+  CrewRequirementResponse,
+  RequirementAssignmentsResponse,
+} from '../../api/generated/types.gen';
+import RequirementCrewList from '../assignments/RequirementCrewList';
+import { staffingSummary } from '../../lib/assignmentLabels';
 
 /**
  * One staffing line on the mission detail page.
@@ -24,17 +30,29 @@ import type { CrewRequirementResponse } from '../../api/generated/types.gen';
  * Mandatory shows as a filled chip and preferred as an outlined one, because the difference
  * decides whether a candidate is filtered out or merely ranked lower - it is the most consequential
  * field in the row and a word alone is easy to skim past.
+ *
+ * The crew are shown underneath when the caller is entitled to see them - feature 07. `crew` is
+ * optional rather than required because a crew member reading a mission they are assigned to gets
+ * the mission but not its staffing view, and the card has to render either way.
  */
 export default function RequirementCard({
   requirement,
+  crew,
   editable,
   onEdit,
   onDelete,
+  canWithdraw,
+  withdrawing,
+  onWithdraw,
 }: {
   requirement: CrewRequirementResponse;
+  crew?: RequirementAssignmentsResponse;
   editable: boolean;
   onEdit: () => void;
   onDelete: () => void;
+  canWithdraw?: (assignment: AssignmentResponse) => boolean;
+  withdrawing?: string | null;
+  onWithdraw?: (assignment: AssignmentResponse) => void;
 }) {
   const [anchorEl, setAnchorEl] = useState<HTMLElement | null>(null);
   const filled = requirement.acceptedCount >= requirement.requiredCount;
@@ -61,7 +79,11 @@ export default function RequirementCard({
             color: filled ? 'success.main' : 'text.secondary',
           }}
         >
-          {requirement.acceptedCount} of {requirement.requiredCount} accepted
+          {/* Outstanding offers are named as well as counted, because a line waiting on a reply
+              and a line nobody has been asked about need different things from a lead. */}
+          {crew
+            ? staffingSummary(crew.requiredCount, crew.acceptedCount, crew.offeredCount)
+            : `${requirement.acceptedCount} of ${requirement.requiredCount} accepted`}
         </Typography>
 
         {editable && (
@@ -132,6 +154,15 @@ export default function RequirementCard({
             ))}
           </TableBody>
         </Table>
+      )}
+
+      {crew && (
+        <RequirementCrewList
+          requirement={crew}
+          canWithdraw={canWithdraw ?? (() => false)}
+          withdrawing={withdrawing ?? null}
+          onWithdraw={onWithdraw ?? (() => {})}
+        />
       )}
     </Card>
   );

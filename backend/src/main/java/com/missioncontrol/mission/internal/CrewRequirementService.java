@@ -1,5 +1,6 @@
 package com.missioncontrol.mission.internal;
 
+import com.missioncontrol.mission.api.MissionStatus;
 import com.missioncontrol.skill.api.SkillCatalogue;
 import com.missioncontrol.skill.api.SkillSummary;
 import java.time.Clock;

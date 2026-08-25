@@ -5,19 +5,26 @@ import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { useMutation, useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { Link, useParams } from 'react-router';
-import { getMissionOptions } from '../api/generated/@tanstack/react-query.gen';
+import {
+  getMissionOptions,
+  listMissionAssignmentsOptions,
+  offerAssignmentMutation,
+} from '../api/generated/@tanstack/react-query.gen';
 import { matchAll, matchRequirement } from '../api/generated/sdk.gen';
 import type {
+  AssignmentResponse,
   CandidateResponse,
+  MissionResponse,
   RequirementMatchResponse,
 } from '../api/generated/types.gen';
-import { canMatchCrew } from '../auth/permissions';
+import { canMatchCrew, canOfferCrew } from '../auth/permissions';
 import { useAuth } from '../auth/useAuth';
 import RequirementDraftCard from '../components/matching/RequirementDraftCard';
 import MissionStatusChip from '../components/missions/MissionStatusChip';
+import { STATUS_LABELS } from '../lib/missionLabels';
 import { messageForProblem } from '../lib/problemDetail';
 
 /**
@@ -27,9 +34,16 @@ import { messageForProblem } from '../lib/problemDetail';
  * candidate is a workspace, and the mission page is already a summary of everything else. A route
  * is also linkable and survives a refresh, which is the reason this application has a router.
  *
- * **Nothing here is saved.** Feature 06 suggests and does not assign, so the draft is client state
- * and the Offer action arrives with feature 07. The banner says so rather than leaving a lead to
- * discover it by reloading.
+ * **A draft is still client state; an offer is not.** Feature 06 could only suggest, and the page
+ * said so. Feature 07 gives each drafted candidate an Offer button, and offering is the point at
+ * which the crew member finds out: it creates a real assignment they can accept or decline. What is
+ * pencilled in and what has been sent are drawn differently for that reason - a draft vanishes on
+ * a refresh and an offer does not.
+ *
+ * Offering is the owning lead's alone - BR-9 - so a director sees the whole board, can run matches
+ * on it, and gets no Offer buttons. Withdrawing somebody already offered is on the mission page,
+ * not here: this screen is about choosing between candidates, and a person already committed is no
+ * longer a candidate.
  *
  * The state worth understanding is `seen`. It accumulates every candidate shown for a requirement
  * across rematches, and it has to: without it a rematch would exclude only the shortlist currently
@@ -48,13 +62,22 @@ export default function CrewMatchingPage() {
   const [seen, setSeen] = useState<Record<string, string[]>>({});
   const [remaining, setRemaining] = useState<Record<string, number>>({});
   const [busyRequirement, setBusyRequirement] = useState<string | null>(null);
+  const [offeringRequirement, setOfferingRequirement] = useState<string | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const queryClient = useQueryClient();
 
   const {
     data: mission,
     isPending,
     error,
   } = useQuery(getMissionOptions({ path: { id: missionId } }));
+
+  // Who is already offered or accepted. Feature 06 assumed nobody, which was true then; now it has
+  // to be asked, or the open-seat arithmetic on every line would be wrong the moment anyone offers.
+  const { data: staffing } = useQuery(listMissionAssignmentsOptions({ path: { missionId } }));
+
+  const offerPlace = useMutation(offerAssignmentMutation());
 
   const draftWholeMission = useMutation({
     mutationFn: async () => {
@@ -152,14 +175,19 @@ export default function CrewMatchingPage() {
 
       setRequirements((current) =>
         current.some((r) => r.requirementId === requirementId)
-          ? current.map((r) => (r.requirementId === requirementId ? { ...r, ...summary(result) } : r))
+          ? current.map((r) =>
+              r.requirementId === requirementId ? { ...r, ...summary(result) } : r,
+            )
           : [...current, result],
       );
       setSuggestions((current) => ({ ...current, [requirementId]: result.candidates }));
       setSeen((current) => ({
         ...current,
         [requirementId]: Array.from(
-          new Set([...(current[requirementId] ?? []), ...result.candidates.map((c) => c.crewMemberId)]),
+          new Set([
+            ...(current[requirementId] ?? []),
+            ...result.candidates.map((c) => c.crewMemberId),
+          ]),
         ),
       }));
       setRemaining((current) => ({ ...current, [requirementId]: result.remainingCount }));
@@ -183,6 +211,44 @@ export default function CrewMatchingPage() {
     }));
   }
 
+  /**
+   * Turns drafted candidates into real offers, one request each.
+   *
+   * Sequential rather than parallel, and that is deliberate. Invariant A2 caps a requirement at its
+   * seat count, and the server counts under a row lock - so firing four offers at three seats
+   * concurrently would give three arbitrary winners and one 409 with no way to say which. In order,
+   * the lead can see exactly where it stopped.
+   *
+   * A failure stops the run rather than pressing on. The usual cause is the line filling up, and
+   * every later offer would fail the same way.
+   */
+  async function offerEach(requirementId: string, candidates: CandidateResponse[]) {
+    setActionError(null);
+    setOfferingRequirement(requirementId);
+    try {
+      for (const candidate of candidates) {
+        await offerPlace.mutateAsync({
+          path: { missionId },
+          body: { crewRequirementId: requirementId, crewMemberId: candidate.crewMemberId },
+        });
+        // Dropped from the draft as it lands, so a partial failure leaves the board showing
+        // exactly who still has not been offered.
+        setDrafted((current) => ({
+          ...current,
+          [requirementId]: (current[requirementId] ?? []).filter(
+            (other) => other.crewMemberId !== candidate.crewMemberId,
+          ),
+        }));
+      }
+    } catch (caught) {
+      setActionError(messageForProblem(caught, 'Could not offer that place.'));
+    } finally {
+      setOfferingRequirement(null);
+      await queryClient.invalidateQueries({ queryKey: [{ _id: 'listMissionAssignments' }] });
+      await queryClient.invalidateQueries({ queryKey: [{ _id: 'getMission' }] });
+    }
+  }
+
   function handleRemove(requirementId: string, candidate: CandidateResponse) {
     setDrafted((current) => ({
       ...current,
@@ -198,7 +264,32 @@ export default function CrewMatchingPage() {
     }));
   }
 
-  const lines = requirements.length > 0 ? requirements : mission.requirements.map(placeholder);
+  const mayOffer = canOfferCrew(user, mission);
+
+  /** Everyone already offered or accepted against one line, from the server rather than the draft. */
+  function committedFor(requirementId: string): AssignmentResponse[] {
+    return (
+      staffing?.requirements
+        .find((line) => line.requirementId === requirementId)
+        ?.assignments.filter(
+          (assignment) => assignment.status === 'OFFERED' || assignment.status === 'ACCEPTED',
+        ) ?? []
+    );
+  }
+
+  // Match responses carry their own counts and win where they exist, because they were computed
+  // after any offer this page made. Everything else falls back to the staffing view, and only then
+  // to the mission's own figures.
+  const lines = mission.requirements.map((requirement) => {
+    const matched = requirements.find((line) => line.requirementId === requirement.id);
+    return (
+      matched ??
+      placeholder(
+        requirement,
+        staffing?.requirements.find((line) => line.requirementId === requirement.id),
+      )
+    );
+  });
 
   return (
     <Box>
@@ -236,9 +327,12 @@ export default function CrewMatchingPage() {
         </Button>
       </Stack>
 
-      <Alert severity="info" sx={{ mb: 3 }}>
-        A draft is not saved and nobody is offered anything. Suggestions are worked out fresh on
-        every request; offering crew arrives in feature 07.
+      <Alert severity={mayOffer ? 'info' : 'warning'} sx={{ mb: 3 }}>
+        {draftingNote(
+          mayOffer,
+          canMatchCrew(user, mission) && mission.missionLead.id === user?.id,
+          mission.status,
+        )}
       </Alert>
 
       {actionError && (
@@ -258,18 +352,53 @@ export default function CrewMatchingPage() {
             <RequirementDraftCard
               key={requirement.requirementId}
               requirement={requirement}
+              committed={committedFor(requirement.requirementId)}
               drafted={drafted[requirement.requirementId] ?? []}
               suggestions={suggestions[requirement.requirementId] ?? []}
               remaining={remaining[requirement.requirementId]}
               matching={busyRequirement === requirement.requirementId}
+              offering={offeringRequirement === requirement.requirementId}
+              canOffer={mayOffer}
               onMatch={() => handleMatchOne(requirement.requirementId)}
               onPin={(candidate) => handlePin(requirement.requirementId, candidate)}
               onRemove={(candidate) => handleRemove(requirement.requirementId, candidate)}
+              onOffer={(candidate) => offerEach(requirement.requirementId, [candidate])}
+              onOfferAll={() =>
+                offerEach(requirement.requirementId, drafted[requirement.requirementId] ?? [])
+              }
             />
           ))}
         </Stack>
       )}
     </Box>
+  );
+}
+
+/**
+ * What the lead can actually do from here, said once at the top.
+ *
+ * Three cases rather than two, because 'you cannot offer anybody' has two quite different causes
+ * and only one of them is about the person reading it. An owner looking at a mission still in
+ * planning can draft all they like and simply cannot send anything yet; a director never can. A
+ * single message covering both would be wrong for whichever one was reading it.
+ */
+function draftingNote(mayOffer: boolean, isOwner: boolean, status: MissionResponse['status']) {
+  if (mayOffer) {
+    return (
+      'Drafting is yours alone until you press Offer. Offering tells the crew member, who can ' +
+      'then accept or decline - and an offer holds the seat but not the person, so somebody may ' +
+      'be offered two clashing missions and take only one.'
+    );
+  }
+  if (isOwner) {
+    return (
+      `Draft a crew now to see whether this plan is staffable. Places can only be offered once ` +
+      `the mission is approved, and this one is ${STATUS_LABELS[status].toLowerCase()}.`
+    );
+  }
+  return (
+    'Suggestions are worked out fresh on every request. Only the mission lead who owns this ' +
+    'mission can offer anybody a place.'
   );
 }
 
@@ -291,23 +420,25 @@ function summary(result: RequirementMatchResponse) {
 /**
  * What a requirement looks like before anything has been matched for it.
  *
- * The mission detail response knows the seats but not the offers, so `offeredCount` is assumed zero
- * until a match response says otherwise. Feature 07 is what makes that assumption ever wrong, and
- * the first match on the line corrects it.
+ * The mission detail response knows the seats and the acceptances but not the outstanding offers,
+ * so the staffing view supplies those. Feature 06 assumed zero here, which was true only because
+ * nothing could offer anybody anything; now an unasked line and a line waiting on three replies
+ * would otherwise look identical.
  */
-function placeholder(requirement: {
-  id: string;
-  title: string;
-  requiredCount: number;
-  acceptedCount: number;
-}): RequirementMatchResponse {
+function placeholder(
+  requirement: { id: string; title: string; requiredCount: number; acceptedCount: number },
+  staffing?: { acceptedCount: number; offeredCount: number },
+): RequirementMatchResponse {
+  const accepted = staffing?.acceptedCount ?? requirement.acceptedCount;
+  const offered = staffing?.offeredCount ?? 0;
+
   return {
     requirementId: requirement.id,
     title: requirement.title,
     requiredCount: requirement.requiredCount,
-    acceptedCount: requirement.acceptedCount,
-    offeredCount: 0,
-    openSeats: Math.max(0, requirement.requiredCount - requirement.acceptedCount),
+    acceptedCount: accepted,
+    offeredCount: offered,
+    openSeats: Math.max(0, requirement.requiredCount - accepted - offered),
     remainingCount: 0,
     candidates: [],
   };

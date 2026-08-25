@@ -7,9 +7,12 @@ import {
   canManageRequirements,
   canMatchCrew,
   canModifyMission,
+  canOfferCrew,
   canReplanMission,
+  canRespondToOffer,
   canStartMission,
   canSubmitForApproval,
+  canWithdrawAssignment,
 } from '../permissions';
 
 const LEAD: CurrentUserResponse = {
@@ -191,5 +194,67 @@ describe('canMatchCrew', () => {
         expect(canMatchCrew(LEAD, mission(status))).toBe(true);
       },
     );
+  });
+});
+
+describe('canOfferCrew', () => {
+  it('is the owning lead alone, and only on an APPROVED mission', () => {
+    expect(canOfferCrew(LEAD, mission('APPROVED'))).toBe(true);
+    // A director may run a match and read the crew, and offers nobody anything - BR-9.
+    expect(canOfferCrew(DIRECTOR, mission('APPROVED'))).toBe(false);
+    expect(canOfferCrew(OTHER_LEAD, mission('APPROVED'))).toBe(false);
+    expect(canOfferCrew(CREW, mission('APPROVED'))).toBe(false);
+    expect(canOfferCrew(null, mission('APPROVED'))).toBe(false);
+  });
+
+  it('is not offered in any other status, ACTIVE included', () => {
+    // Narrower than canMatchCrew on purpose. A mission already flying is not taking on crew, and a
+    // seat vacated after launch is dealt with by editing the plan - which sends it back to PLAN.
+    (['PLAN', 'PENDING_APPROVAL', 'REJECTED', 'ACTIVE', 'CLOSED'] as const).forEach((status) => {
+      expect(canOfferCrew(LEAD, mission(status))).toBe(false);
+    });
+  });
+});
+
+describe('canWithdrawAssignment', () => {
+  const offered = { status: 'OFFERED' } as const;
+  const accepted = { status: 'ACCEPTED' } as const;
+
+  it('is the owning lead alone - not a director, unlike editing the mission', () => {
+    expect(canWithdrawAssignment(LEAD, mission('ACTIVE'), accepted)).toBe(true);
+    expect(canWithdrawAssignment(DIRECTOR, mission('ACTIVE'), accepted)).toBe(false);
+    expect(canWithdrawAssignment(OTHER_LEAD, mission('ACTIVE'), accepted)).toBe(false);
+    expect(canWithdrawAssignment(CREW, mission('ACTIVE'), accepted)).toBe(false);
+  });
+
+  it('covers an open offer as well as an acceptance', () => {
+    expect(canWithdrawAssignment(LEAD, mission('APPROVED'), offered)).toBe(true);
+  });
+
+  it('is not offered on a settled assignment, which has nothing left to withdraw', () => {
+    expect(canWithdrawAssignment(LEAD, mission('ACTIVE'), { status: 'DECLINED' })).toBe(false);
+    expect(canWithdrawAssignment(LEAD, mission('ACTIVE'), { status: 'WITHDRAWN' })).toBe(false);
+  });
+
+  it('is not restricted by mission status - crew can be released mid-flight', () => {
+    // BR-11: doing so does not send the mission backwards, so there is no reason to hide it.
+    (['APPROVED', 'ACTIVE', 'PLAN'] as const).forEach((status) => {
+      expect(canWithdrawAssignment(LEAD, mission(status), accepted)).toBe(true);
+    });
+  });
+});
+
+describe('canRespondToOffer', () => {
+  it('is the crew member, and only while the offer is open', () => {
+    expect(canRespondToOffer(CREW, { status: 'OFFERED' })).toBe(true);
+    expect(canRespondToOffer(LEAD, { status: 'OFFERED' })).toBe(false);
+    expect(canRespondToOffer(DIRECTOR, { status: 'OFFERED' })).toBe(false);
+    expect(canRespondToOffer(null, { status: 'OFFERED' })).toBe(false);
+  });
+
+  it('is gone once accepted, because being let off is the mission lead’s decision', () => {
+    expect(canRespondToOffer(CREW, { status: 'ACCEPTED' })).toBe(false);
+    expect(canRespondToOffer(CREW, { status: 'DECLINED' })).toBe(false);
+    expect(canRespondToOffer(CREW, { status: 'WITHDRAWN' })).toBe(false);
   });
 });

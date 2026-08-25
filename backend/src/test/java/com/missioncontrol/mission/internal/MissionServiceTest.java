@@ -1,5 +1,7 @@
 package com.missioncontrol.mission.internal;
 
+import com.missioncontrol.mission.api.MissionClosedEvent;
+import com.missioncontrol.mission.api.MissionStatus;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
@@ -16,7 +18,9 @@ import com.missioncontrol.skill.api.SkillCatalogue;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -64,8 +68,19 @@ class MissionServiceTest {
     private MissionService service;
     private StubStaffing staffing;
 
+    /**
+     * Everything the service announced.
+     *
+     * <p>A list rather than a mock, because {@code ApplicationEventPublisher} is a functional
+     * interface and a method reference says what is being collected more plainly than a captor
+     * would. Feature 07's FR-8 hangs off the one event in here, so it is worth asserting rather
+     * than assuming.
+     */
+    private final List<Object> published = new ArrayList<>();
+
     @BeforeEach
     void setUp() {
+        published.clear();
         staffing = new StubStaffing();
         lenient().when(staffingProvider.getIfAvailable(any())).thenReturn(staffing);
         lenient().when(currentUser.organisationId()).thenReturn(ORG);
@@ -94,6 +109,7 @@ class MissionServiceTest {
                 new MissionApprovals(approvalRepository),
                 new MissionDetailAssembler(missions, missionStaffing, skills, users, currentUser),
                 currentUser,
+                published::add,
                 Clock.fixed(NOW, ZoneOffset.UTC));
     }
 
@@ -396,6 +412,19 @@ class MissionServiceTest {
             assertThat(open.getDecision()).isEqualTo(ApprovalDecision.CANCELLED);
             assertThat(open.getDecidedBy()).isEqualTo(LEAD);
             assertThat(open.getComment()).isEqualTo("Launch window missed.");
+        }
+
+        @Test
+        @DisplayName("Closing announces it, so the assignment module can withdraw its offers - FR-8")
+        void closingPublishesAnEvent() {
+            givenMission(mission(MissionStatus.ACTIVE, LEAD));
+
+            service.close(MISSION, new CloseMissionRequest(null, null));
+
+            // Published rather than called. Withdrawing offers is a write into a module this one
+            // must never depend on, so the arrow it would create is the cycle ModularityTests
+            // exists to catch. The instant is the mission's own, not a second reading of the clock.
+            assertThat(published).containsExactly(new MissionClosedEvent(MISSION, ORG, NOW));
         }
 
         @Test

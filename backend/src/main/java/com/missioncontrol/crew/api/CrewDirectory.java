@@ -1,6 +1,9 @@
 package com.missioncontrol.crew.api;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 /**
@@ -11,10 +14,16 @@ import java.util.UUID;
  * their ratings, and reaching into {@code crew.internal} is what {@code ModularityTests} exists to
  * stop.
  *
- * <p>Whole-roster by design, and there is no single-crew-member variant. Matching ranks a
- * population rather than looking someone up, and offering a one-at-a-time method would make the
- * N+1 the path of least resistance - the same reasoning {@code SkillCatalogue} and
+ * <p>{@link #rosterOf} is whole-roster by design and has no single-crew-member variant. Matching
+ * ranks a population rather than looking someone up, and offering a one-at-a-time method would make
+ * the N+1 the path of least resistance - the same reasoning {@code SkillCatalogue} and
  * {@code UserDirectory} both record. Feature 06's NFR-2 forbids a per-candidate query outright.
+ *
+ * <p>The two id lookups added for feature 07 are a different question and answer it with ids
+ * rather than profiles. {@code assignment} stores a {@code crewMemberId} but authenticates a
+ * {@code userId}, and it needs to cross between the two in both directions - to know whose
+ * assignment it is holding, and to resolve a name through {@code identity}. Handing back a
+ * {@link CrewProfile} for either would fetch a map of skill ratings that neither caller reads.
  *
  * <p>Takes the organisation explicitly rather than reading {@code CurrentUser}, so the tenant a
  * result is scoped to is visible at the call site. Crew in another organisation are not in the
@@ -34,4 +43,29 @@ public interface CrewDirectory {
      *         something a directory should presume.
      */
     List<CrewProfile> rosterOf(UUID organisationId);
+
+    /**
+     * The crew profile belonging to one account, if that account has one in this organisation.
+     *
+     * <p>A single-id method, unlike everything else here, and it earns the exception: this answers
+     * 'who am I' for the caller of a request, once, not 'what is everyone worth'. There is no loop
+     * it could sit inside.
+     *
+     * <p>Empty means the user is not a crew member of that organisation - a director, a mission
+     * lead, or somebody else's account entirely. Callers read all three the same way, which is
+     * what stops this becoming a way to probe another tenant's accounts.
+     */
+    Optional<UUID> crewMemberIdOf(UUID userId, UUID organisationId);
+
+    /**
+     * The accounts behind several crew profiles.
+     *
+     * <p>Bulk, because the caller is about to ask {@code identity} for their names and a name per
+     * row is the N+1 feature 07's NFR-4 forbids. Ids only: this module holds no names and cannot
+     * resolve one, which is the point of {@code userId} being a bare reference in the first place.
+     *
+     * @return user ids keyed by crew member id, for those that exist in that organisation; unknown
+     *         ids are absent. An empty input yields an empty map without touching the database.
+     */
+    Map<UUID, UUID> userIdsByCrewMemberId(Collection<UUID> crewMemberIds, UUID organisationId);
 }

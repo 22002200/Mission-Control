@@ -1,0 +1,13 @@
+# Normalise line endings on checkout so the repo behaves the same regardless of
+# a contributor's `core.autocrlf` setting. Without this, a Windows clone with
+# the Git default (autocrlf=true) checks scripts out with CRLF.
+* text=auto eol=lf
+
+# Windows-only scripts keep CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# The Maven wrapper is run by /bin/sh inside the backend image. CRLF turns its
+# shebang into `/bin/sh\r`, which the kernel cannot resolve - the Docker build
+# then fails with exit code 127.
+mvnw text eol=lf
